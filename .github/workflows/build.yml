@@ -15,10 +15,11 @@ jobs:
       uses: fiam/arm-none-eabi-gcc@v1
       with:
         release: '9-2019-q4'
-    - name: Submodules
-      run: git submodule update --init --recursive
-    # build submodules
-    - name: Build Submodules
+    - name: Build submodules
       run: |
+        git submodule update --init --recursive
         cd libDaisy && make all -j
         cd ../DaisySP && make all -j
+    - name: Build main
+      run: |
+        make all -j

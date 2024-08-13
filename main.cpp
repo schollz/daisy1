@@ -52,7 +52,7 @@ int main(void) {
   if (f_mount(&fsi.GetSDFileSystem(), "/", 1) == FR_OK) {
     hw.PrintLine("SD Card Mounted!");
   } else {
-    System::Delay(500);
+    System::Delay(2500);
     if (f_mount(&fsi.GetSDFileSystem(), "/", 1) == FR_OK) {
       hw.PrintLine("SD Card Mounted!");
     } else {

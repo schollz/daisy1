@@ -4,13 +4,16 @@
 
 #include "daisy_pod.h"
 #include "daisysp.h"
+#include "lib/loop.h"
 
 #define MAX_SIZE (48000 * 60 * 5)  // 5 minutes of floats at 48 khz
 
 using namespace daisy;
+using namespace daisysp;
 
 DaisyPod hw;
 DaisySeed daisyseed;
+Loop loops[3];
 
 bool first = true;  // first loop (sets length)
 bool rec = false;   // currently recording
@@ -48,6 +51,11 @@ int main(void) {
   daisyseed.StartLog(true);
 
   daisyseed.PrintLine("Verify CRT floating point format: %.3f", 124.0f);
+
+  for (int i = 0; i < 3; i++) {
+    loops[i].Init(48000, i * 48000, (i + 1) * 48000);
+  }
+  daisyseed.PrintLine("loop[0].rate = %.3f", loops[0].GetRate());
 
   // hw.Init();
   hw.SetAudioBlockSize(4);

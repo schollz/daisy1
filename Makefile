@@ -3,7 +3,7 @@
 TARGET = daisy1
 
 # Sources
-CPP_SOURCES = main.cpp
+CPP_SOURCES = main.cpp lib/loop.cpp
 # C_SOURCES = audio.c
 
 # Library Locations

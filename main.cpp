@@ -2,111 +2,169 @@
 #include <cstdio>
 #include <cstring>
 
-#include "daisy_seed.h"
-#include "fatfs.h"
+#include "daisy_pod.h"
+#include "daisysp.h"
 
-#define TEST_FILE_NAME "test.txt"
+#define MAX_SIZE (48000 * 60 * 5)  // 5 minutes of floats at 48 khz
 
 using namespace daisy;
 
-static DaisySeed hw;
-SdmmcHandler sd;
-FatFSInterface fsi;
-FIL SDFile;
+DaisyPod hw;
+DaisySeed daisyseed;
+
+bool first = true;  // first loop (sets length)
+bool rec = false;   // currently recording
+bool play = false;  // currently playing
+
+int pos = 0;
+float DSY_SDRAM_BSS buf[MAX_SIZE];
+int mod = MAX_SIZE;
+int len = 0;
+float drywet = 0;
+bool res = false;
+
+void ResetBuffer();
+void Controls();
+
+void NextSamples(float& output, AudioHandle::InterleavingInputBuffer in,
+                 size_t i);
+
+static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
+                          AudioHandle::InterleavingOutputBuffer out,
+                          size_t size) {
+  float output = 0;
+  Controls();
+  for (size_t i = 0; i < size; i += 2) {
+    NextSamples(output, in, i);
+
+    // left and right outs
+    out[i] = out[i + 1] = output;
+  }
+}
 
 int main(void) {
-  /* test sd card */
-  // Vars and buffs.
-  char outbuff[512];
-  char inbuff[512];
-  size_t len, failcnt, byteswritten;
-  hw.PrintLine("Starting Daisy Seed Test...");
-  sprintf(outbuff, "Daisy...Testing...\n1...\n2...\n3...\n");
-  memset(inbuff, 0, 512);
-  len = strlen(outbuff);
-  failcnt = 0;
-
-  hw.Configure();
   hw.Init();
   /* true == wait for PC: will block until a terminal is connected */
-  hw.StartLog(true);
+  daisyseed.StartLog(true);
 
-  /** check that floating point printf is supported
-   * linker flags modified in the Makefile to enable this
-   */
-  hw.PrintLine("Verify CRT floating point format: %.3f", 124.0f);
+  daisyseed.PrintLine("Verify CRT floating point format: %.3f", 124.0f);
 
-  hw.PrintLine("Starting SD Card Test...");
-  // Init SD Card
-  SdmmcHandler::Config sd_cfg;
-  sd_cfg.Defaults();
-  sd_cfg.speed = SdmmcHandler::Speed::SLOW;
-  sd.Init(sd_cfg);
+  // hw.Init();
+  hw.SetAudioBlockSize(4);
+  ResetBuffer();
 
-  hw.PrintLine("SD Card Initialized!");
-  // Links libdaisy i/o to fatfs driver.
-  fsi.Init(FatFSInterface::Config::MEDIA_SD);
+  // start callback
+  hw.StartAdc();
+  hw.StartAudio(AudioCallback);
 
-  hw.PrintLine("Mounting SD Card...");
-  // Mount SD Card
-  if (f_mount(&fsi.GetSDFileSystem(), "/", 1) == FR_OK) {
-    hw.PrintLine("SD Card Mounted!");
-  } else {
-    System::Delay(2500);
-    if (f_mount(&fsi.GetSDFileSystem(), "/", 1) == FR_OK) {
-      hw.PrintLine("SD Card Mounted!");
-    } else {
-      hw.PrintLine("Error mounting SD Card!");
-    }
-  }
-
-  // Open and write the test file to the SD Card.
-  if (f_open(&SDFile, TEST_FILE_NAME, (FA_CREATE_ALWAYS) | (FA_WRITE)) ==
-      FR_OK) {
-    f_write(&SDFile, outbuff, len, &byteswritten);
-    hw.PrintLine("Wrote %d bytes to file.", byteswritten);
-    f_close(&SDFile);
-  } else {
-    hw.PrintLine("Error opening file to write!");
-  }
-
-  // Read back the test file from the SD Card.
-  if (f_open(&SDFile, TEST_FILE_NAME, FA_READ) == FR_OK) {
-    f_read(&SDFile, inbuff, len, &byteswritten);
-    f_close(&SDFile);
-  } else {
-    hw.PrintLine("Error opening file to read!");
-  }
-
-  // Check for sameness.
-  for (size_t i = 0; i < len; i++) {
-    if (inbuff[i] != outbuff[i]) {
-      failcnt++;
-    }
-  }
-
-  if (failcnt > 0) {
-    hw.PrintLine("SD Card Test Failed! %d mismatches.", failcnt);
-  } else {
-    hw.PrintLine("SD Card Test Passed!");
-  }
-
-  uint32_t counter = 0;
   while (1) {
-    System::Delay(500);
+  }
+}
 
-    const float time_s = System::GetNow() * 1.0e-3f;
+// Resets the buffer
+void ResetBuffer() {
+  play = false;
+  rec = false;
+  first = true;
+  pos = 0;
+  len = 0;
+  for (int i = 0; i < mod; i++) {
+    buf[i] = 0;
+  }
+  mod = MAX_SIZE;
+}
 
-    /** showcase floating point output
-     * note that FLT_FMT is part of the format string
-     */
-    hw.PrintLine("%6u: Elapsed time: " FLT_FMT3 " seconds", counter,
-                 FLT_VAR3(time_s));
+void UpdateButtons() {
+  // button1 pressed
+  if (hw.button2.RisingEdge()) {
+    if (first && rec) {
+      first = false;
+      mod = len;
+      len = 0;
+    }
 
-    /* LSB triggers the LED */
-    hw.SetLed(counter & 0x01);
-    counter++;
+    res = true;
+    play = true;
+    rec = !rec;
   }
 
-  return 0;
+  // button1 held
+  if (hw.button2.TimeHeldMs() >= 1000 && res) {
+    ResetBuffer();
+    res = false;
+  }
+
+  // button2 pressed and not empty buffer
+  if (hw.button1.RisingEdge() && !(!rec && first)) {
+    play = !play;
+    rec = false;
+  }
+}
+
+// Deals with analog controls
+uint32_t lastPrintTime = 0;
+const uint32_t printInterval = 100;  // Print every 1000 ms (1 second)
+int encoderIncrement = 0;
+void Controls() {
+  hw.ProcessAnalogControls();
+  hw.ProcessDigitalControls();
+
+  drywet = hw.knob1.Process();
+
+  UpdateButtons();
+
+  // leds
+  hw.led1.Set(0, play == true, 0);
+  hw.led2.Set(rec == true, 0, 0);
+
+  hw.UpdateLeds();
+
+  // update encoder
+  // hw.encoder.Debounce();
+  int inc = hw.encoder.Increment();
+  if (inc > 0) {
+    encoderIncrement++;
+  } else if (inc < 0) {
+    encoderIncrement--;
+  }
+
+  // get current time
+  uint32_t currentTime = System::GetNow();
+  if (currentTime - lastPrintTime >= printInterval) {
+    daisyseed.PrintLine("knob1=%2.3f knob2=%2.3f, enc=%d", hw.knob1.Process(),
+                        hw.knob2.Process(), encoderIncrement);
+    lastPrintTime = currentTime;
+  }
+}
+
+void WriteBuffer(AudioHandle::InterleavingInputBuffer in, size_t i) {
+  buf[pos] = buf[pos] * 0.5 + in[i] * 0.5;
+  if (first) {
+    len++;
+  }
+}
+
+void NextSamples(float& output, AudioHandle::InterleavingInputBuffer in,
+                 size_t i) {
+  if (rec) {
+    WriteBuffer(in, i);
+  }
+
+  output = buf[pos];
+
+  // automatic looptime
+  if (len >= MAX_SIZE) {
+    first = false;
+    mod = MAX_SIZE;
+    len = 0;
+  }
+
+  if (play) {
+    pos++;
+    pos %= mod;
+  }
+
+  if (!rec) {
+    output = output * drywet + in[i] * (1 - drywet);
+  }
 }

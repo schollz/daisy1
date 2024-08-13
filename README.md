@@ -3,6 +3,32 @@ First thing with daisy
 
 ## prequisites
 
+Install libusb
+
+```
+sudo apt install -y libusb-1.0-0-dev screen
+```
+
+Build openocd
+
+```
+git clone https://git.code.sf.net/p/openocd/code openocd-code
+cd openocd-code/
+./bootstrap 
+./configure --enable-stlink
+make -j8
+sudo make install
+```
+
+Add udev rules ([info](https://forum.electro-smith.com/t/st-link-and-cortex-debugger-on-ubuntu-24-04/5260))
+
+```
+cd dev/udev-rules
+sudo cp *.* /etc/udev/rules.d/
+sudo systemctl reload udev
+sudo udevadm trigger
+````
+
 Install libncurses5-dev and lib32ncurses5-dev
 
 ```
@@ -34,7 +60,8 @@ export PATH=~/bin/gcc-arm-none-eabi-10-2020-q4-major/bin:$PATH
 git clone https://github.com/schollz/daisy1
 cd daisy1
 git submodule update --init --recursive 
-cd libDaisy && make all
+cd libDaisy && make all -j8
+cd DaisySP && make all -j8
 ```
 
 ## building

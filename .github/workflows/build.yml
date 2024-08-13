@@ -1,0 +1,24 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: arm-none-eabi-gcc
+      uses: fiam/arm-none-eabi-gcc@v1
+      with:
+        release: '9-2019-q4'
+    - name: Submodules
+      run: git submodule update --init --recursive
+    # build submodules
+    - name: Build Submodules
+      run: |
+        cd libDaisy && make all -j
+        cd ../DaisySP && make all -j

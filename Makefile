@@ -1,3 +1,4 @@
+
 # Project Name
 TARGET = daisy1
 
@@ -8,15 +9,9 @@ CPP_SOURCES = main.cpp
 # Library Locations
 LIBDAISY_DIR = libDaisy
 DAISYSP_DIR = DaisySP
-LDFLAGS = -u _printf_float
+USE_FATFS = 1
+LDFLAGS += -u _printf_float
 
 # Core location, and generic Makefile.
 SYSTEM_FILES_DIR = $(LIBDAISY_DIR)/core
 include $(SYSTEM_FILES_DIR)/Makefile
-
-format: *.cpp
-	clang-format -i *.cpp
-	
-libDaisy:
-	git clone --depth 1 https://github.com/electro-smith/libDaisy.git
-	cd libDaisy && make -j32

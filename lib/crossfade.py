@@ -24,84 +24,97 @@ def run():
     # fade out the last 10% of the exponential
     exp_out = np.multiply(exp_out, line_out)
     exp_in = np.multiply(exp_in, 1 - line_out)
-    print(
-        """#ifndef CROSSFADE_LIB
+    # create a header file `crossfade.h`
+    with open("crossfade.h", "w") as f:
+        f.write(
+            """#ifndef CROSSFADE_LIB
+#define CROSSFADE_LIB
 #define CROSSFADE_LIB
 #define CROSSFADE_COS 0      
 #define CROSSFADE_SQRT 1      
 #define CROSSFADE_EXP 2      
 #define CROSSFADE_LINE 3
 """
-    )
-    print("#define CROSSFADE_LIMIT %d" % sample_num)
-    print(f"static float crossfade_cos_out[{sample_num}]={{")
+        )
+        f.write("#define CROSSFADE_LIMIT %d\n" % sample_num)
+        f.write(f"extern float crossfade_cos_out[{sample_num}];\n")
+        f.write(f"extern float crossfade_cos_in[{sample_num}];\n")
+        f.write(f"extern float crossfade_sqrt_out[{sample_num}];\n")
+        f.write(f"extern float crossfade_sqrt_in[{sample_num}];\n")
+        f.write(f"extern float crossfade_exp_out[{sample_num}];\n")
+        f.write(f"extern float crossfade_exp_in[{sample_num}];\n")
+        f.write(f"extern float crossfade_line[{sample_num}];\n")
+        f.write(
+            """
+#endif
+"""
+        )
+    # now create the .cpp file
+    f = open("crossfade.cpp", "w")
+    f.write('#include "crossfade.h"\n')
+
+    f.write(f"float crossfade_cos_out[{sample_num}]={{")
     s = ""
     for _, v in enumerate(cos_out):
         s += f"{round(v,4)},"
-    print(s)
-    print("};")
-    print(f"static float crossfade_cos_in[{sample_num}]={{")
+    f.write(s)
+    f.write("};")
+    f.write(f"float crossfade_cos_in[{sample_num}]={{")
     s = ""
     for _, v in enumerate(cos_in):
         s += f"{round(v,4)},"
-    print(s)
-    print("};")
+    f.write(s)
+    f.write("};")
 
-    print(f"static float crossfade_sqrt_out[{sample_num}]={{")
+    f.write(f"float crossfade_sqrt_out[{sample_num}]={{")
     s = ""
     for _, v in enumerate(sqrt_out):
         s += f"{round(v,4)},"
-    print(s)
-    print("};")
+    f.write(s)
+    f.write("};")
 
-    print(f"static float crossfade_sqrt_in[{sample_num}]={{")
+    f.write(f"float crossfade_sqrt_in[{sample_num}]={{")
     s = ""
     for _, v in enumerate(sqrt_in):
         s += f"{round(v,4)},"
-    print(s)
-    print("};")
+    f.write(s)
+    f.write("};")
 
-    print(f"static float crossfade_exp_out[{sample_num}]={{")
+    f.write(f"float crossfade_exp_out[{sample_num}]={{")
     s = ""
     for _, v in enumerate(exp_out):
         s += f"{round(v,4)},"
-    print(s)
-    print("};")
+    f.write(s)
+    f.write("};")
 
-    print(f"static float crossfade_exp_in[{sample_num}]={{")
+    f.write(f"float crossfade_exp_in[{sample_num}]={{")
     s = ""
     for _, v in enumerate(exp_in):
         s += f"{round(v,4)},"
-    print(s)
-    print("};")
+    f.write(s)
+    f.write("};")
 
-    print(f"static float crossfade_line[{sample_num}]={{")
+    f.write(f"float crossfade_line[{sample_num}]={{")
     s = ""
     for _, v in enumerate(line_out):
         s += f"{round(v,4)},"
-    print(s)
-    print("};")
+    f.write(s)
+    f.write("};")
 
-    print(
-        """
-#endif
-"""
-    )
-
-    # Plot the sine wave
-    plt.plot(x, cos_out, label="Cos", color="r")
-    plt.plot(x, sqrt_out, label="Sqrt", color="b")
-    plt.plot(x, line_out, label="Line", color="g")
-    plt.plot(x, exp_out, label="Exp", color="y")
-    plt.plot(x, cos_in, color="r")
-    plt.plot(x, sqrt_in, color="b")
-    plt.plot(x, 1 - line_out, color="g")
-    plt.plot(x, exp_in, color="y")
-    plt.legend()
-    plt.xlabel("X")
-    plt.ylabel("Y")
-    plt.title("Curves")
-    plt.show()
+    # # Plot the sine wave
+    # plt.plot(x, cos_out, label="Cos", color="r")
+    # plt.plot(x, sqrt_out, label="Sqrt", color="b")
+    # plt.plot(x, line_out, label="Line", color="g")
+    # plt.plot(x, exp_out, label="Exp", color="y")
+    # plt.plot(x, cos_in, color="r")
+    # plt.plot(x, sqrt_in, color="b")
+    # plt.plot(x, 1 - line_out, color="g")
+    # plt.plot(x, exp_in, color="y")
+    # plt.legend()
+    # plt.xlabel("X")
+    # plt.ylabel("Y")
+    # plt.title("Curves")
+    # plt.show()
 
 
 if __name__ == "__main__":

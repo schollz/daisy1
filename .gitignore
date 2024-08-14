@@ -1,6 +1,7 @@
 # Prerequisites
 *.d
 lib/crossfade.h 
+lib/crossfade.cpp
 # Compiled Object files
 *.slo
 *.lo

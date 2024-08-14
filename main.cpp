@@ -4,7 +4,7 @@
 
 #include "daisy_pod.h"
 #include "daisysp.h"
-#include "lib/loop.h"
+#include "lib/tape.h"
 
 #define MAX_SIZE (48000 * 60 * 5)  // 5 minutes of floats at 48 khz
 
@@ -14,10 +14,10 @@ using namespace daisysp;
 DaisyPod hw;
 DaisySeed daisyseed;
 #define NUM_LOOPS 5
-Loop loops[NUM_LOOPS];
 size_t loop_index = 0;
 #define NUM_COLORS 5
 Color my_colors[5];
+Tape tape;
 
 bool first = true;  // first loop (sets length)
 bool rec = false;   // currently recording
@@ -30,7 +30,6 @@ int len = 0;
 float drywet = 0;
 bool res = false;
 
-void ResetBuffer();
 void Controls();
 
 void NextSamples(float& output, AudioHandle::InterleavingInputBuffer in,
@@ -39,18 +38,20 @@ void NextSamples(float& output, AudioHandle::InterleavingInputBuffer in,
 static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
                           AudioHandle::InterleavingOutputBuffer out,
                           size_t size) {
-  float output = 0;
   Controls();
-  for (size_t i = 0; i < size; i += 2) {
-    NextSamples(output, in, i);
-
-    // left and right outs
-    out[i] = out[i + 1] = output;
-  }
+  // // copy in left channel to bufin
+  // float bufin[size];
+  // float bufout[size];
+  // for (size_t i = 0; i < size / 2; i++) {
+  //   bufin[i] = in[i * 2];
+  // }
 }
 
 int main(void) {
   hw.Init();
+
+  // erase buf
+  memset(buf, 0, sizeof(buf));
 
   my_colors[0].Init(Color::PresetColor::RED);
   my_colors[1].Init(Color::PresetColor::GREEN);
@@ -61,17 +62,13 @@ int main(void) {
   hw.led1.Update();
 
   daisyseed.StartLog(true);
+  daisyseed.PrintLine("crossfade test: %2.1f", crossfade_sqrt_out[200]);
+  daisyseed.PrintLine("crossfade test: %2.1f", crossfade_sqrt_in[200]);
 
   daisyseed.PrintLine("Verify CRT floating point format: %.3f", 124.0f);
 
-  for (int i = 0; i < 3; i++) {
-    loops[i].Init(48000, i * 48000, (i + 1) * 48000);
-  }
-  daisyseed.PrintLine("loop[0].rate = %.3f", loops[0].GetRate());
-
   // hw.Init();
   hw.SetAudioBlockSize(4);
-  ResetBuffer();
 
   // start callback
   hw.StartAdc();
@@ -81,79 +78,54 @@ int main(void) {
   }
 }
 
-// Resets the buffer
-void ResetBuffer() {
-  play = false;
-  rec = false;
-  first = true;
-  pos = 0;
-  len = 0;
-  for (int i = 0; i < mod; i++) {
-    buf[i] = 0;
-  }
-  mod = MAX_SIZE;
-}
-
-void UpdateButtons() {
-  // button1 pressed
-  if (hw.button2.RisingEdge()) {
-    if (first && rec) {
-      first = false;
-      mod = len;
-      len = 0;
-    }
-
-    res = true;
-    play = true;
-    rec = !rec;
-  }
-
-  // button1 held
-  if (hw.button2.TimeHeldMs() >= 1000 && res) {
-    ResetBuffer();
-    res = false;
-  }
-
-  // button2 pressed and not empty buffer
-  if (hw.button1.RisingEdge() && !(!rec && first)) {
-    play = !play;
-    rec = false;
-  }
-}
-
 // Deals with analog controls
 uint32_t lastPrintTime = 0;
 const uint32_t printInterval = 100;  // Print every 1000 ms (1 second)
-int encoderIncrement = 0;
+int encoder_increment = 0;
+bool encoder_changed = false;
 float knobs_last[2] = {0, 0};
 float knobs_current[2] = {0, 0};
-bool button1_pressed = false;
-bool button2_pressed = false;
+float button_time_pressed[3] = {0, 0};
+
 void Controls() {
   hw.ProcessAnalogControls();
   hw.ProcessDigitalControls();
 
-  if (hw.button1.RisingEdge()) {
-    button1_pressed = true;
-    // increment loop index
-    loop_index++;
-    if (loop_index >= NUM_LOOPS) {
-      loop_index = 0;
-    }
-    // set color
-    hw.led1.SetColor(my_colors[loop_index]);
-    hw.led1.Update();
+  if (hw.button1.Pressed()) {
+    button_time_pressed[0] = hw.button1.TimeHeldMs();
   }
-
-  if (hw.button2.RisingEdge()) {
-    // start recording
+  if (hw.button1.FallingEdge()) {
+    if (button_time_pressed[0] > 400) {
+      daisyseed.PrintLine("button1 long press");
+    } else {
+      daisyseed.PrintLine("button1 short press");
+    }
+  }
+  if (hw.button2.Pressed()) {
+    button_time_pressed[1] = hw.button2.TimeHeldMs();
+  }
+  if (hw.button2.FallingEdge()) {
+    if (button_time_pressed[1] > 400) {
+      daisyseed.PrintLine("button2 long press");
+    } else {
+      daisyseed.PrintLine("button2 short press");
+    }
+  }
+  if (hw.encoder.Pressed()) {
+    button_time_pressed[2] = hw.encoder.TimeHeldMs();
+  }
+  if (hw.encoder.FallingEdge()) {
+    if (button_time_pressed[2] > 400) {
+      daisyseed.PrintLine("encoder long press");
+    } else {
+      daisyseed.PrintLine("encoder short press");
+    }
   }
 
   int inc = hw.encoder.Increment();
-  if (inc > 0) {
-    encoderIncrement++;
-  } else if (inc < 0) {
-    encoderIncrement--;
+  if (inc != 0) {
+    encoder_increment += inc;
+    encoder_changed = true;
   }
 
   // make array of knob processes
@@ -173,44 +145,12 @@ void Controls() {
         knob_changed = true;
       }
     }
-    if (knob_changed || button1_pressed) {
-      daisyseed.PrintLine("%d, but1=%d, knob1=%2.3f knob2=%2.3f, enc=%d",
-                          loop_index, button1_pressed, knobs_current[0],
-                          knobs_current[1], encoderIncrement);
-      button1_pressed = false;
+    if (knob_changed || encoder_changed) {
+      daisyseed.PrintLine("%d, knob1=%2.3f knob2=%2.3f, enc=%d", loop_index,
+                          knobs_current[0], knobs_current[1],
+                          encoder_increment);
     }
+    encoder_changed = false;
     lastPrintTime = currentTime;
-  }
-}
-
-void WriteBuffer(AudioHandle::InterleavingInputBuffer in, size_t i) {
-  buf[pos] = buf[pos] * 0.5 + in[i] * 0.5;
-  if (first) {
-    len++;
-  }
-}
-
-void NextSamples(float& output, AudioHandle::InterleavingInputBuffer in,
-                 size_t i) {
-  if (rec) {
-    WriteBuffer(in, i);
-  }
-
-  output = buf[pos];
-
-  // automatic looptime
-  if (len >= MAX_SIZE) {
-    first = false;
-    mod = MAX_SIZE;
-    len = 0;
-  }
-
-  if (play) {
-    pos++;
-    pos %= mod;
-  }
-
-  if (!rec) {
-    output = output * drywet + in[i] * (1 - drywet);
   }
 }

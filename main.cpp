@@ -32,7 +32,7 @@ float drywet = 0.0;
 void Controls();
 void SetVoltage(float voltage) {
   voltage -= 0.055f;
-  float val = roundf(voltage * 4095 / (3.06f - 0.055f));
+  float val = roundf(1281.572171 * voltage - 12.21070518);
   if (val > 4095) val = 4095;
   if (val < 0) val = 0;
   daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
@@ -95,7 +95,8 @@ int main(void) {
   cfg.mode = DacHandle::Mode::POLLING;
   cfg.chn = DacHandle::Channel::TWO;
   daisyseed.dac.Init(cfg);
-  SetVoltage(2.78f);
+
+  SetVoltage(1.234f);
 
   // erase buf
   memset(buf, 0, sizeof(buf));
@@ -111,6 +112,13 @@ int main(void) {
   daisyseed.StartLog(true);
 
   daisyseed.PrintLine("Verify CRT floating point format: %.3f", 124.0f);
+
+  // // calibrate dac values
+  // for (uint16_t value = 0; value < 4095; value += 500) {
+  //   daisyseed.dac.WriteValue(DacHandle::Channel::TWO, value);
+  //   daisyseed.PrintLine("DAC value: %d", value);
+  //   System::Delay(3000);
+  // }
 
   hw.SetAudioBlockSize(128);
 

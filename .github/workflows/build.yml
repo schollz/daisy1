@@ -11,10 +11,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install clang-format
     - name: arm-none-eabi-gcc
       uses: fiam/arm-none-eabi-gcc@v1
       with:
         release: '9-2019-q4'
+    - name: Set up Python
+      uses: actions/setup-python@v5.1.0
+      with:
+        python-version: '3.11'
+    - name: Create and activate a Python virtual environment
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        uv venv .venv
+        echo "VIRTUAL_ENV=.venv" >> $GITHUB_ENV
+        echo "$PWD/.venv/bin" >> $GITHUB_PATH
+    - name: Install Python dependencies
+      run: uv pip install -r requirements.txt
+    - run: uv pip freeze
     - name: Build submodules
       run: |
         git submodule update --init --recursive
@@ -22,4 +39,5 @@ jobs:
         cd ../DaisySP && make all -j
     - name: Build main
       run: |
+        make lib/crossfade.h
         make all -j

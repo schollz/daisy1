@@ -32,3 +32,5 @@ lib/crossfade.h
 *.app
 build/
 *zip
+test/interpolation/1
+test/tape/1

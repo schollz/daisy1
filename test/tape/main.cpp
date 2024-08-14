@@ -4,10 +4,6 @@
 
 #include "../../lib/circularbuffer.h"
 #include "../../lib/crossfade.h"
-#define TAPE_BUFFER_SAMPLES 48000
-
-float tape_buffer[TAPE_BUFFER_SAMPLES];
-CircularBuffer tape_circular_buffer(2 * CROSSFADE_LIMIT);
 
 #define TAPE_PLAY_HEADS 3
 class TapeHead {
@@ -43,6 +39,18 @@ class Tape {
     DO_ERASE,
     TAPE_FLAG_COUNT,
   };
+  TapeHead head_rec;
+  TapeHead head_play[TAPE_PLAY_HEADS];
+  size_t head_play_last_pos = 0;
+  size_t buffer_max = 1000;
+  size_t buffer_start = 2 * CROSSFADE_LIMIT;
+  size_t buffer_end = buffer_start + buffer_max;
+  std::bitset<TAPE_FLAG_COUNT> flags;
+  void Init(size_t start, size_t end, size_t max) {
+    buffer_start = start;
+    buffer_end = end;
+    buffer_max = max;
+  }
   void RecordingStart() { head_rec.SetState(TapeHead::STARTING); }
   void RecordingStop() {
     if (head_rec.IsState(TapeHead::STARTING)) {
@@ -90,15 +98,10 @@ class Tape {
   }
 
   void PlayingFadeOut() {
-    // stop any starting heads
-    for (size_t i = 0; i < TAPE_PLAY_HEADS; i++) {
-      if (head_play[i].IsState(TapeHead::STARTING)) {
-        head_play[i].SetState(TapeHead::STOPPED);
-      }
-    }
     // stop any started heads, which will continue to fade out
     for (size_t i = 0; i < TAPE_PLAY_HEADS; i++) {
-      if (head_play[i].IsState(TapeHead::STARTED)) {
+      if (head_play[i].IsState(TapeHead::STARTED) ||
+          head_play[i].IsState(TapeHead::STARTING)) {
         head_play[i].SetState(TapeHead::STOPPING);
       }
     }
@@ -109,8 +112,7 @@ class Tape {
     // find a stopped head, otherwise use head 0
     size_t head = 0;
     for (size_t i = 0; i < TAPE_PLAY_HEADS; i++) {
-      if (head_play[i].IsState(
-              TapeHead::STOPPED)) {  // Fixed missing closing parenthesis
+      if (head_play[i].IsState(TapeHead::STOPPED)) {
         head = i;
         break;
       }
@@ -134,7 +136,7 @@ class Tape {
 
   void PlayingStop() { PlayingFadeOut(); }
 
-  void Process(float (&buf_tape)[480], CircularBuffer &buf_circular, float *in,
+  void Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
                float *out, size_t samples) {
     /** <recording> **/
     if (flags.test(DO_ERASE)) {
@@ -216,6 +218,8 @@ class Tape {
             head_play_last_pos = head_play[head].pos;
             head_play[head].Move();
             // if the head is at the buffer end, cut it
+            // PlayingCut will automatically transition the current
+            // head to the STOPPING state
             if (head_play[head].pos >= buffer_end) {
               size_t new_head_to_play = PlayingCut(buffer_start);
               // find any -1 heads_to_play and replace it with the new head
@@ -245,32 +249,67 @@ class Tape {
       }    // end head loop
     }
   }
-
- private:
-  TapeHead head_rec;
-  TapeHead head_play[TAPE_PLAY_HEADS];
-  size_t head_play_last_pos = 0;
-  size_t buffer_max = 1000;
-  size_t buffer_start = 2 * CROSSFADE_LIMIT;
-  size_t buffer_end = buffer_start + buffer_max;
-  std::bitset<TAPE_FLAG_COUNT> flags;
 };
+
+#define TAPE_BUFFER_SAMPLES 3000
+
+float tape_buffer[TAPE_BUFFER_SAMPLES];
+CircularBuffer tape_circular_buffer(2 * CROSSFADE_LIMIT);
 
 int main() {
   std::cout << "Hello, World!" << std::endl;
-  int8_t heads_to_play[6] = {0, 1, 2, -1, -1, -1};
-  for (size_t head_to_play = 0; head_to_play < 6; head_to_play++) {
-    size_t head = 0;
-    if (head_to_play == 2) {
-      heads_to_play[5] = 2;
-    }
-    if (heads_to_play[head_to_play] >= 0) {
-      head = heads_to_play[head_to_play];
-    } else {
-      continue;
-    }
-    // print out the head to play
-    std::cout << "Iteration " << head_to_play << " head" << head << std::endl;
+  Tape tape;
+
+  tape.Init(1000, 800, 800);
+  // record 500 samples and then stop and
+  float in[48];
+  for (size_t i = 0; i < 48; i++) {
+    in[i] = 1.0;
   }
+  // run through a few audio blocks
+  for (size_t i = 0; i < 1000; i++) {
+    tape_circular_buffer.Write(1.0f);
+  }
+  // run through a few audio blocks
+  for (size_t i = 0; i < 10; i++) {
+    float out[48];
+    tape.Process(tape_buffer, tape_circular_buffer, in, out, 48);
+  }
+  tape.RecordingStart();
+  for (size_t i = 0; i < 10; i++) {
+    float out[48];
+    tape.Process(tape_buffer, tape_circular_buffer, in, out, 48);
+  }
+  tape.RecordingStop();
+  for (size_t i = 0; i < 10; i++) {
+    float out[48];
+    for (size_t j = 0; j < 48; j++) {
+      out[j] = 0.0;
+    }
+    tape.Process(tape_buffer, tape_circular_buffer, in, out, 48);
+    // print output
+    for (size_t j = 0; j < 48; j++) {
+      std::cout << out[j] << std::endl;
+    }
+  }
+  tape.PlayingStop();
+  for (size_t i = 0; i < 10; i++) {
+    float out[48];
+    for (size_t j = 0; j < 48; j++) {
+      out[j] = 0.0;
+    }
+    tape.Process(tape_buffer, tape_circular_buffer, in, out, 48);
+    // print output
+    for (size_t j = 0; j < 48; j++) {
+      std::cout << out[j] << std::endl;
+    }
+  }
+  // // print out the non-zero elements of the buffer
+  // for (size_t i = 0; i < TAPE_BUFFER_SAMPLES; i++) {
+  //   if (tape_buffer[i] != 0) {
+  //     std::cout << i << " " << tape_buffer[i] << std::endl;
+  //   }
+  // }
+
   return 0;
 }

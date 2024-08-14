@@ -12,7 +12,7 @@ class TapeHead {
   void SetState(State new_state);
   bool IsState(State check_state);
   State GetState();
-  size_t pos;
+  size_t pos = 0;
   size_t state_time = 0;
   Direction direction;
 

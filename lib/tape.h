@@ -21,15 +21,18 @@ class Tape {
   size_t buffer_end = buffer_start + buffer_max;
   std::bitset<TAPE_FLAG_COUNT> flags;
 
-  void Init(size_t start, size_t end, size_t max);
+  void Init(size_t start, size_t max);
   void RecordingStart();
   void RecordingStop();
   void RecordingErase();
+  void RecordingToggle();
+  bool IsRecording();
   bool IsPlaying();
   bool IsPlayingOrFading();
   void PlayingFadeOut();
   size_t PlayingCut(size_t pos);
   void PlayingStart();
+  void PlayingToggle();
   void PlayingReset();
   void PlayingStop();
   void Process(float *buf_tape, CircularBuffer &buf_circular, float *in,

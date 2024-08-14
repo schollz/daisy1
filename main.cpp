@@ -2,12 +2,17 @@
 #include <cstdio>
 #include <cstring>
 
+#include "core_cm7.h"
 #include "daisy_pod.h"
 #include "daisysp.h"
 #include "lib/tape.h"
 
-#define MAX_SIZE (48000 * 60 * 5)  // 5 minutes of floats at 48 khz
-
+#define INCLUDE_AUDIO_PROFILING 1
+#define AUDIO_BLOCK_SIZE 128
+#define AUDIO_SAMPLE_RATE 48000
+#define MAX_SIZE (AUDIO_SAMPLE_RATE * 60 * 5)  // 5 minutes of floats at 48 khz
+#define CYCLES_AVAILBLE \
+  1066666  // (400000000 * AUDIO_BLOCK_SIZE / AUDIO_SAMPLE_RATE)
 using namespace daisy;
 using namespace daisysp;
 
@@ -31,24 +36,60 @@ float drywet = 0;
 bool res = false;
 
 void Controls();
+void SetVoltage(float voltage) {
+  voltage -= 0.055f;
+  float val = roundf(voltage * 4095 / (3.06f - 0.055f));
+  if (val > 4095) val = 4095;
+  if (val < 0) val = 0;
+  daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
+}
 
-void NextSamples(float& output, AudioHandle::InterleavingInputBuffer in,
-                 size_t i);
+uint32_t audiocallback_time_needed = 0;
 
 static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
                           AudioHandle::InterleavingOutputBuffer out,
                           size_t size) {
+#ifdef INCLUDE_AUDIO_PROFILING
+  // measure - start
+  DWT->CYCCNT = 0;
+#endif
   Controls();
+  // copy input into output
+  for (size_t i = 0; i < size; i++) {
+    out[i] = in[i];
+  }
   // // copy in left channel to bufin
   // float bufin[size];
   // float bufout[size];
   // for (size_t i = 0; i < size / 2; i++) {
   //   bufin[i] = in[i * 2];
   // }
+
+#ifdef INCLUDE_AUDIO_PROFILING
+  audiocallback_time_needed = DWT->CYCCNT;
+#endif
 }
 
 int main(void) {
   hw.Init();
+
+#ifdef INCLUDE_AUDIO_PROFILING
+  // setup measurement
+  // https://forum.electro-smith.com/t/solved-how-to-do-mcu-utilization-measurements/1236
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+  DWT->LAR = 0xC5ACCE55;
+  DWT->CYCCNT = 0;
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+#endif
+
+  // initialize DAC
+  DacHandle::Config cfg;
+  cfg.bitdepth = DacHandle::BitDepth::BITS_12;
+  cfg.buff_state = DacHandle::BufferState::ENABLED;
+  cfg.mode = DacHandle::Mode::POLLING;
+  cfg.chn = DacHandle::Channel::TWO;
+  daisyseed.dac.Init(cfg);
+  SetVoltage(2.78f);
 
   // erase buf
   memset(buf, 0, sizeof(buf));
@@ -62,13 +103,11 @@ int main(void) {
   hw.led1.Update();
 
   daisyseed.StartLog(true);
-  daisyseed.PrintLine("crossfade test: %2.1f", crossfade_sqrt_out[200]);
-  daisyseed.PrintLine("crossfade test: %2.1f", crossfade_sqrt_in[200]);
 
   daisyseed.PrintLine("Verify CRT floating point format: %.3f", 124.0f);
 
   // hw.Init();
-  hw.SetAudioBlockSize(4);
+  hw.SetAudioBlockSize(128);
 
   // start callback
   hw.StartAdc();
@@ -82,7 +121,7 @@ int main(void) {
 uint32_t lastPrintTime = 0;
 const uint32_t printInterval = 100;  // Print every 1000 ms (1 second)
 int encoder_increment = 0;
-bool encoder_changed = false;
+bool controls_changed = false;
 float knobs_last[2] = {0, 0};
 float knobs_current[2] = {0, 0};
 float button_time_pressed[3] = {0, 0};
@@ -91,6 +130,7 @@ void Controls() {
   hw.ProcessAnalogControls();
   hw.ProcessDigitalControls();
 
+  /* update buttons */
   if (hw.button1.Pressed()) {
     button_time_pressed[0] = hw.button1.TimeHeldMs();
   }
@@ -122,35 +162,37 @@ void Controls() {
     }
   }
 
+  /* update encoder */
   int inc = hw.encoder.Increment();
   if (inc != 0) {
     encoder_increment += inc;
-    encoder_changed = true;
+    controls_changed = true;
   }
 
   // make array of knob processes
-  knobs_current[0] = hw.knob1.Process();
-  knobs_current[1] = hw.knob2.Process();
-  // round to 3 decimal places
-  knobs_current[0] = roundf(knobs_current[0] * 200) / 200;
-  knobs_current[1] = roundf(knobs_current[1] * 200) / 200;
+  knobs_current[0] = roundf(hw.knob1.Process() * 200) / 200;
+  if (knobs_current[0] != knobs_last[0]) {
+    knobs_last[0] = knobs_current[0];
+    controls_changed = true;
+  }
+  knobs_current[1] = roundf(hw.knob2.Process() * 200) / 200;
+  if (knobs_current[1] != knobs_last[1]) {
+    knobs_last[1] = knobs_current[1];
+    controls_changed = true;
+  }
 
-  // get current time
-  uint32_t currentTime = System::GetNow();
-  if (currentTime - lastPrintTime >= printInterval) {
-    bool knob_changed = false;
-    for (size_t i = 0; i < 2; i++) {
-      if (knobs_current[i] != knobs_last[i]) {
-        knobs_last[i] = knobs_current[i];
-        knob_changed = true;
+  // debugging print at specified interval
+  if (printInterval > 0) {
+    uint32_t currentTime = System::GetNow();
+    if (currentTime - lastPrintTime >= printInterval) {
+      if (controls_changed) {
+        daisyseed.PrintLine(
+            "%d, knob1=%2.3f knob2=%2.3f, enc=%d, usage=%2.1f%%", loop_index,
+            knobs_current[0], knobs_current[1], encoder_increment,
+            (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f);
+        controls_changed = false;
       }
+      lastPrintTime = currentTime;
     }
-    if (knob_changed || encoder_changed) {
-      daisyseed.PrintLine("%d, knob1=%2.3f knob2=%2.3f, enc=%d", loop_index,
-                          knobs_current[0], knobs_current[1],
-                          encoder_increment);
-    }
-    encoder_changed = false;
-    lastPrintTime = currentTime;
   }
 }

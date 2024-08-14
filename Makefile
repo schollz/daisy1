@@ -2,6 +2,8 @@
 # Project Name
 TARGET = daisy1
 
+USE_DAISYSP_LGPL = 1
+
 # Sources
 CPP_SOURCES = main.cpp lib/tape.cpp lib/tapehead.cpp lib/crossfade.cpp
 # C_SOURCES = audio.c

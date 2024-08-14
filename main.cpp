@@ -18,22 +18,16 @@ using namespace daisysp;
 
 DaisyPod hw;
 DaisySeed daisyseed;
+
+static ReverbSc rev;
+
 #define NUM_LOOPS 5
 size_t loop_index = 0;
-#define NUM_COLORS 5
-Color my_colors[5];
+Color my_colors[NUM_LOOPS];
 Tape tape;
 
-bool first = true;  // first loop (sets length)
-bool rec = false;   // currently recording
-bool play = false;  // currently playing
-
-int pos = 0;
 float DSY_SDRAM_BSS buf[MAX_SIZE];
-int mod = MAX_SIZE;
-int len = 0;
-float drywet = 0;
-bool res = false;
+float drywet = 0.0;
 
 void Controls();
 void SetVoltage(float voltage) {
@@ -42,6 +36,12 @@ void SetVoltage(float voltage) {
   if (val > 4095) val = 4095;
   if (val < 0) val = 0;
   daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
+}
+
+void GetReverbSample(float &outl, float &outr, float inl, float inr) {
+  rev.Process(inl, inr, &outl, &outr);
+  outl = drywet * outl + (1 - drywet) * inl;
+  outr = drywet * outr + (1 - drywet) * inr;
 }
 
 uint32_t audiocallback_time_needed = 0;
@@ -55,8 +55,14 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
 #endif
   Controls();
   // copy input into output
-  for (size_t i = 0; i < size; i++) {
-    out[i] = in[i];
+  float outl, outr, inl, inr;
+  for (size_t i = 0; i < size; i += 2) {
+    // apply reverb
+    inl = in[i];
+    inr = in[i + 1];
+    GetReverbSample(outl, outr, inl, inr);
+    out[i] = outl;
+    out[i + 1] = outr;
   }
   // // copy in left channel to bufin
   // float bufin[size];
@@ -106,8 +112,12 @@ int main(void) {
 
   daisyseed.PrintLine("Verify CRT floating point format: %.3f", 124.0f);
 
-  // hw.Init();
   hw.SetAudioBlockSize(128);
+
+  // initialize
+  rev.Init(hw.AudioSampleRate());
+  rev.SetLpFreq(18000.0f);
+  rev.SetFeedback(0.85f);
 
   // start callback
   hw.StartAdc();

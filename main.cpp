@@ -21,10 +21,10 @@ DaisySeed daisyseed;
 
 static ReverbSc rev;
 
-#define NUM_LOOPS 5
+#define NUM_LOOPS 2
 size_t loop_index = 0;
-Color my_colors[NUM_LOOPS];
-Tape tape;
+Color my_colors[5];
+Tape tape[NUM_LOOPS];
 
 CircularBuffer tape_circular_buffer(2 * CROSSFADE_LIMIT);
 float DSY_SDRAM_BSS tape_linear_buffer[MAX_SIZE];
@@ -66,9 +66,10 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
     audiocallback_bufin[i / 2] = in[i];
     tape_circular_buffer.Write(in[i]);
   }
-  tape.Process(tape_linear_buffer, tape_circular_buffer, audiocallback_bufin,
-               audiocallback_bufout, size / 2);
-
+  for (size_t i = 0; i < NUM_LOOPS; i++) {
+    tape[i].Process(tape_linear_buffer, tape_circular_buffer,
+                    audiocallback_bufin, audiocallback_bufout, size / 2);
+  }
   // // apply reverb to tape
   // float outl, outr, inl, inr;
   // for (size_t i = 0; i < size; i += 2) {
@@ -121,13 +122,17 @@ int main(void) {
   my_colors[0].Init(Color::PresetColor::RED);
   my_colors[1].Init(Color::PresetColor::GREEN);
   my_colors[2].Init(Color::PresetColor::BLUE);
-  my_colors[3].Init(Color::PresetColor::PURPLE);
+  // yellow
+  my_colors[3].Init(0.9f, 0.9f, 0.0f);
   my_colors[4].Init(Color::PresetColor::GOLD);
   hw.led1.SetColor(my_colors[0]);
   hw.led1.Update();
 
-  // intialize tape
-  tape.Init(AUDIO_SAMPLE_RATE * 3, AUDIO_SAMPLE_RATE * 25);
+  // intialize tapes
+  for (size_t i = 0; i < NUM_LOOPS; i++) {
+    tape[i].Init(AUDIO_SAMPLE_RATE * (i * 25 + 3),
+                 AUDIO_SAMPLE_RATE * (i + 1) * 25);
+  }
 
   daisyseed.StartLog(true);
 
@@ -163,7 +168,6 @@ bool controls_changed = false;
 float knobs_last[2] = {0, 0};
 float knobs_current[2] = {0, 0};
 float button_time_pressed[3] = {0, 0};
-
 void Controls() {
   hw.ProcessAnalogControls();
   hw.ProcessDigitalControls();
@@ -175,11 +179,11 @@ void Controls() {
   if (hw.button1.FallingEdge()) {
     if (button_time_pressed[0] > 400) {
       daisyseed.PrintLine("button1 long press");
-      tape.PlayingReset();
-      tape.PlayingStart();
+      tape[loop_index].PlayingReset();
+      tape[loop_index].PlayingStart();
     } else {
       daisyseed.PrintLine("button1 short press");
-      tape.PlayingToggle();
+      tape[loop_index].PlayingToggle();
     }
   }
   if (hw.button2.Pressed()) {
@@ -187,13 +191,15 @@ void Controls() {
   }
   if (hw.button2.FallingEdge()) {
     if (button_time_pressed[1] > 400) {
-      tape.RecordingErase();
-      daisyseed.PrintLine("button2 long press, %d-%d", tape.buffer_start,
-                          tape.buffer_end);
+      tape[loop_index].RecordingErase();
+      daisyseed.PrintLine("button2 long press, %d-%d",
+                          tape[loop_index].buffer_start,
+                          tape[loop_index].buffer_end);
     } else {
-      tape.RecordingToggle();
-      daisyseed.PrintLine("button2 short press, %d-%d", tape.buffer_start,
-                          tape.buffer_end);
+      tape[loop_index].RecordingToggle();
+      daisyseed.PrintLine("button2 short press, %d-%d",
+                          tape[loop_index].buffer_start,
+                          tape[loop_index].buffer_end);
     }
   }
   if (hw.encoder.Pressed()) {
@@ -207,18 +213,18 @@ void Controls() {
     }
   }
 
-  // update leds
-  if (tape.IsPlayingOrFading()) {
+  /* update leds */
+  if (tape[loop_index].IsPlayingOrFading()) {
     hw.led1.SetColor(my_colors[1]);
   } else {
-    hw.led1.SetColor(my_colors[2]);
-  }
-  if (tape.IsRecording()) {
-    hw.led2.SetColor(my_colors[0]);
-  } else {
-    hw.led2.SetColor(my_colors[2]);
+    hw.led1.SetColor(my_colors[loop_index + 2]);
   }
   hw.led1.Update();
+  if (tape[loop_index].IsRecording()) {
+    hw.led2.SetColor(my_colors[0]);
+  } else {
+    hw.led2.SetColor(my_colors[loop_index + 2]);
+  }
   hw.led2.Update();
 
   /* update encoder */
@@ -226,6 +232,7 @@ void Controls() {
   if (inc != 0) {
     encoder_increment += inc;
     controls_changed = true;
+    loop_index = encoder_increment % NUM_LOOPS;
   }
 
   // make array of knob processes

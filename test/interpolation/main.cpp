@@ -30,6 +30,11 @@ class SampleRateConverter {
   std::vector<float> processBuffer(const float* input_buffer, size_t input_size,
                                    size_t output_size) {
     std::vector<float> output_buffer(output_size);
+    if (!initialized) {
+      fractional_index = 0.0;
+      initialized = true;
+      last_sample = input_buffer[0];
+    }
 
     float input_index_increment = static_cast<float>(input_size) / output_size;
     float input_index = 0.0f;
@@ -38,10 +43,11 @@ class SampleRateConverter {
       size_t index_floor = static_cast<size_t>(input_index);
 
       // Get four points for Hermite interpolation
-      float y0 = input_buffer[std::max(int(index_floor - 1), 0)];
+      float y0 = last_sample;
       float y1 = input_buffer[index_floor];
-      float y2 = input_buffer[std::min(index_floor + 1, input_size - 1)];
-      float y3 = input_buffer[std::min(index_floor + 2, input_size - 1)];
+      float y2 = input_buffer[index_floor + 1];
+      float y3 = input_buffer[index_floor + 2];
+      last_sample = y1;
 
       float fraction = input_index - index_floor;
 
@@ -57,25 +63,33 @@ class SampleRateConverter {
  private:
   float rate;              // Upsampling (>1.0) or downsampling (<1.0) rate
   float fractional_index;  // Keeps track of the fractional position for
-  bool initialized;  // Flag to check if the first sample has been initialized
+  bool initialized;   // Flag to check if the first sample has been initialized
+  float last_sample;  // Last sample from the previous buffer
 };
 
 int main() {
-  float rate = 0.5f;  // Determine rate based on sizes
+  float rate = 1.74f;  // Determine rate based on sizes
   size_t output_size = 128;
   size_t input_size = static_cast<size_t>(rate * output_size);
   SampleRateConverter converter(rate);
   std::vector<float> all_inputs;
   std::vector<float> all_outputs;
 
+  std::cout << "the input_size: " << input_size << std::endl;
+  std::cout << "the output_size: " << output_size << std::endl;
+
   for (size_t t = 0; t < 3; t++) {
-    std::vector<float> inputs(input_size);
+    // need to add two extra samples for Hermite interpolation
+    std::vector<float> inputs(input_size + 2);
     std::vector<float> outputs;
 
     // Fill the input buffer with some values
-    for (size_t i = 0; i < input_size; ++i) {
+    // need to add two extra samples for Hermite interpolation
+    for (size_t i = 0; i < inputs.size(); ++i) {
       inputs[i] = 0.5f * std::sin(2.0f * M_PI * 0.02f * (i + t * input_size));
-      all_inputs.push_back(inputs[i]);
+      if (i < input_size) {
+        all_inputs.push_back(inputs[i]);
+      }
     }
 
     // Process the input buffer to get the output buffer

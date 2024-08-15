@@ -80,9 +80,9 @@ class Resampler {
 
     // Deinterleave the input buffer, which should have 2 extra samples for
     // Hermite interpolation
-    for (size_t i = 0; i < input_size / 2; ++i) {
-      input_left[i] = input_buffer[2 * i];
-      input_right[i] = input_buffer[2 * i + 1];
+    for (size_t i = 0; i < input_size; i += 2) {
+      input_left[i / 2] = input_buffer[i];
+      input_right[i / 2] = input_buffer[i + 1];
     }
 
     // Process the left and right channels
@@ -92,9 +92,9 @@ class Resampler {
                                            output_size / 2);
 
     // Interleave the output buffer
-    for (size_t i = 0; i < output_size / 2; ++i) {
-      output_buffer[2 * i] = output_left[i];
-      output_buffer[2 * i + 1] = output_right[i];
+    for (size_t i = 0; i < output_size; i += 2) {
+      output_buffer[i] = output_left[i];
+      output_buffer[i + 1] = output_right[i];
     }
   }
 

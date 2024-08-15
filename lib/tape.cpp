@@ -193,8 +193,6 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
   /** <playing> **/
   // playing is going to update the output buffer
   if (IsPlayingOrFading()) {
-    size_t output_size = size;
-
     // need to add two extra interleaved samples for Hermite interpolation
     size_t input_size = (size_t)roundf((float)size / rate) + 2 * 2;
 
@@ -286,6 +284,11 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
         }
       }  // end audo block loop
     }    // end head loop
+
+    // unpeek all the heads
+    for (size_t head = 0; head < TAPE_PLAY_HEADS; head++) {
+      head_play[head].UnPeek();
+    }
 
     // apply panning
     lfos[TAPE_LFO_PAN].Update(current_time);

@@ -1,77 +1,10 @@
-#include <cmath>
-#include <iostream>
-#include <stdexcept>
-#include <vector>
-
-class SampleRateConverter {
- public:
-  SampleRateConverter(float rate) : rate(rate), initialized(false) {
-    if (rate <= 0.0) {
-      throw std::invalid_argument("Rate must be positive.");
-    }
-  }
-
-  // Reset the internal state of the SampleRateConverter
-  void reset() {
-    fractional_index = 0.0;
-    initialized = false;
-  }
-
-  // Hermite interpolation
-  float hermiteInterpolate(float t, float y0, float y1, float y2, float y3) {
-    float c0 = y1;
-    float c1 = 0.5f * (y2 - y0);
-    float c2 = y0 - 2.5f * y1 + 2.0f * y2 - 0.5f * y3;
-    float c3 = -0.5f * (y0 - 3.0f * y1 + 3.0f * y2 - y3);
-    return ((c3 * t + c2) * t + c1) * t + c0;
-  }
-
-  // Process an input buffer and return a vector of output samples
-  std::vector<float> processBuffer(const float* input_buffer, size_t input_size,
-                                   size_t output_size) {
-    std::vector<float> output_buffer(output_size);
-    if (!initialized) {
-      fractional_index = 0.0;
-      initialized = true;
-      last_sample = input_buffer[0];
-    }
-
-    float input_index_increment = static_cast<float>(input_size) / output_size;
-    float input_index = 0.0f;
-
-    for (size_t i = 0; i < output_size; ++i) {
-      size_t index_floor = static_cast<size_t>(input_index);
-
-      // Get four points for Hermite interpolation
-      float y0 = last_sample;
-      float y1 = input_buffer[index_floor];
-      float y2 = input_buffer[index_floor + 1];
-      float y3 = input_buffer[index_floor + 2];
-      last_sample = y1;
-
-      float fraction = input_index - index_floor;
-
-      // Perform Hermite interpolation
-      output_buffer[i] = hermiteInterpolate(fraction, y0, y1, y2, y3);
-
-      input_index += input_index_increment;
-    }
-
-    return output_buffer;
-  }
-
- private:
-  float rate;              // Upsampling (>1.0) or downsampling (<1.0) rate
-  float fractional_index;  // Keeps track of the fractional position for
-  bool initialized;   // Flag to check if the first sample has been initialized
-  float last_sample;  // Last sample from the previous buffer
-};
+#include "../../lib/resampler.h"
 
 int main() {
   float rate = 1.0f;  // Determine rate based on sizes
   size_t output_size = 128;
   size_t input_size = static_cast<size_t>(rate * output_size);
-  SampleRateConverter converter(rate);
+  SampleRateConverter converter;
   std::vector<float> all_inputs;
   std::vector<float> all_outputs;
 
@@ -93,7 +26,7 @@ int main() {
     }
 
     // Process the input buffer to get the output buffer
-    outputs = converter.processBuffer(inputs.data(), input_size, output_size);
+    outputs = converter.Process(inputs.data(), input_size, output_size);
     for (size_t i = 0; i < outputs.size(); ++i) {
       all_outputs.push_back(outputs[i]);
     }

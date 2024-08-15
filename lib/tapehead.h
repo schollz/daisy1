@@ -10,6 +10,8 @@ class TapeHead {
   TapeHead();
   void Move();
   void SetState(State new_state);
+  void Peek();
+  void UnPeek();
   bool IsState(State check_state);
   State GetState();
   size_t pos = 0;
@@ -18,6 +20,12 @@ class TapeHead {
 
  private:
   State state;
+  bool peeking = false;
+  // all the following variables are used for peeking
+  size_t pos_last = 0;
+  size_t state_time_last = 0;
+  Direction direction_last;
+  State state_last;
 };
 
 #endif

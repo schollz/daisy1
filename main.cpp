@@ -27,8 +27,7 @@ size_t loop_index = 0;
 Color my_colors[5];
 Tape tape[NUM_LOOPS];
 
-CircularBuffer tape_circular_buffer_l(2 * CROSSFADE_LIMIT);
-CircularBuffer tape_circular_buffer_r(2 * CROSSFADE_LIMIT);
+CircularBuffer tape_circular_buffer(2 * 2 * CROSSFADE_LIMIT);
 float DSY_SDRAM_BSS tape_linear_buffer[MAX_SIZE];
 float drywet = 0.0;
 
@@ -66,13 +65,13 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
   // copy in left channel to bufin
   for (size_t i = 0; i < size; i += 2) {
     audiocallback_bufin[i] = in[i];
-    tape_circular_buffer_l.Write(in[i]);
-    tape_circular_buffer_r.Write(in[i + 1]);
+    audiocallback_bufin[i + 1] = in[i + 1];
+    tape_circular_buffer.Write(in[i]);
+    tape_circular_buffer.Write(in[i + 1]);
   }
   for (size_t i = 0; i < NUM_LOOPS; i++) {
-    tape[i].Process(tape_linear_buffer, tape_circular_buffer_l,
-                    tape_circular_buffer_r, audiocallback_bufin,
-                    audiocallback_bufout, size);
+    tape[i].Process(tape_linear_buffer, tape_circular_buffer,
+                    audiocallback_bufin, audiocallback_bufout, size);
   }
   // // apply reverb to tape
   // float outl, outr, inl, inr;
@@ -134,8 +133,8 @@ int main(void) {
 
   // intialize tapes
   for (size_t i = 0; i < NUM_LOOPS; i++) {
-    tape[i].Init(AUDIO_SAMPLE_RATE * (i * 25 + 3),
-                 AUDIO_SAMPLE_RATE * (i + 1) * 25);
+    tape[i].Init(AUDIO_SAMPLE_RATE * 2 * (i * 25 + 3),
+                 AUDIO_SAMPLE_RATE * 2 * (i + 1) * 25);
   }
 
   daisyseed.StartLog(true);
@@ -240,12 +239,12 @@ void Controls() {
   }
 
   // make array of knob processes
-  knobs_current[0] = roundf(hw.knob1.Process() * 200) / 200;
+  knobs_current[0] = roundf(hw.knob1.Process() * 500) / 500;
   if (knobs_current[0] != knobs_last[0]) {
     knobs_last[0] = knobs_current[0];
     controls_changed = true;
   }
-  knobs_current[1] = roundf(hw.knob2.Process() * 200) / 200;
+  knobs_current[1] = roundf(hw.knob2.Process() * 500) / 500;
   if (knobs_current[1] != knobs_last[1]) {
     knobs_last[1] = knobs_current[1];
     controls_changed = true;

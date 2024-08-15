@@ -74,6 +74,16 @@ bool Tape::IsPlayingOrFading() {
   return is_playing;
 }
 
+void Tape::PlayingReverseToggle() {
+  for (size_t i = 0; i < TAPE_PLAY_HEADS; i++) {
+    if (head_play[i].direction == TapeHead::FORWARD) {
+      head_play[i].direction = TapeHead::BACKWARD;
+    } else {
+      head_play[i].direction = TapeHead::FORWARD;
+    }
+  }
+}
+
 void Tape::PlayingFadeOut() {
   for (size_t i = 0; i < TAPE_PLAY_HEADS; i++) {
     if (head_play[i].IsState(TapeHead::STARTED) ||
@@ -93,6 +103,13 @@ size_t Tape::PlayingCut(size_t pos) {
     }
   }
   head_play[head].pos = pos;
+  if ((head_play[head].pos < buffer_start &&
+       head_play[head].direction == TapeHead::BACKWARD)) {
+    head_play[head].pos = buffer_end;
+  } else if ((head_play[head].pos >= buffer_end &&
+              head_play[head].direction == TapeHead::FORWARD)) {
+    head_play[head].pos = buffer_start;
+  }
   head_play[head].SetState(TapeHead::STARTING);
   return head;
 }
@@ -109,22 +126,25 @@ void Tape::PlayingToggle() {
 
 void Tape::PlayingReset() {
   head_play_last_pos = buffer_start;
+  if (head_play[0].direction == TapeHead::BACKWARD) {
+    head_play_last_pos = buffer_end;
+  }
   PlayingStart();
 }
 
 void Tape::PlayingStop() { PlayingFadeOut(); }
 
-void Tape::Process(float *buf_tape, CircularBuffer &buf_circular_l,
-                   CircularBuffer &buf_circular_r, float *in, float *out,
-                   size_t size) {
+void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
+                   float *out, size_t size) {
   /** <recording> **/
   // recording won't affect the output buffer
   // and will only update the tape buffer (buf_tape)
   if (flags.test(DO_ERASE)) {
     // erase current tape buffer
-    for (size_t i = buffer_start - (CROSSFADE_LIMIT * 2);
-         i < buffer_start + buffer_max + (CROSSFADE_LIMIT * 2); i++) {
+    for (size_t i = buffer_start - (CROSSFADE_LIMIT * 2 * 2);
+         i < buffer_start + buffer_max + (CROSSFADE_LIMIT * 2 * 2); i += 2) {
       buf_tape[i] = 0;
+      buf_tape[i + 1] = 0;
     }
     flags.reset(DO_ERASE);
   }
@@ -132,16 +152,17 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular_l,
     // reset the recording head to the buffer start
     head_rec.pos = buffer_start;
     // prepend the buffer start with all the samples in the circular buffer
-    size_t circular_size = buf_circular_l.GetSize();
+    size_t circular_size = buf_circular.GetSize();
     for (size_t i = 0; i < circular_size; i++) {
-      buf_tape[buffer_start - circular_size + i - 1] = buf_circular_l.Read(i);
+      buf_tape[buffer_start - circular_size + i - 1] = buf_circular.Read(i);
     }
     head_rec.SetState(TapeHead::STARTED);
   }
   if (head_rec.IsState(TapeHead::STARTED) ||
       head_rec.IsState(TapeHead::STOPPING)) {
-    for (size_t i = 0; i < size; i++) {
+    for (size_t i = 0; i < size; i += 2) {
       buf_tape[head_rec.pos] = in[i];
+      buf_tape[head_rec.pos + 1] = in[i + 1];
       head_rec.Move();
       if (head_rec.IsState(TapeHead::STARTED)) {
         // if the buffer is full, stop recording
@@ -176,7 +197,7 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular_l,
       }
 
       // for each play head, update the output buffer
-      for (size_t i = 0; i < size; i++) {
+      for (size_t i = 0; i < size; i += 2) {
         if (i < sample_to_start_on[head_to_play]) {
           continue;
         }
@@ -187,6 +208,8 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular_l,
           } else {
             out[i] += buf_tape[head_play[head].pos] *
                       crossfade_cos_in[head_play[head].state_time];
+            out[i + 1] += buf_tape[head_play[head].pos + 1] *
+                          crossfade_cos_in[head_play[head].state_time];
             head_play[head].Move();  // Added this to move the play head
             continue;
           }
@@ -194,13 +217,22 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular_l,
         // if playing, just play
         if (head_play[head].IsState(TapeHead::STARTED)) {
           out[i] += buf_tape[head_play[head].pos];
+          out[i + 1] += buf_tape[head_play[head].pos + 1];
           head_play_last_pos = head_play[head].pos;
           head_play[head].Move();
           // if the head is at the buffer end, cut it
           // PlayingCut will automatically transition the current
           // head to the STOPPING state
-          if (head_play[head].pos >= buffer_end) {
-            size_t new_head_to_play = PlayingCut(buffer_start);
+          if ((head_play[head].pos >= buffer_end &&
+               head_play[head].direction == TapeHead::FORWARD) ||
+              (head_play[head].pos < buffer_start &&
+               head_play[head].direction == TapeHead::BACKWARD)) {
+            size_t new_pos = buffer_start;
+            if (head_play[head].direction == TapeHead::BACKWARD) {
+              new_pos = buffer_end;
+            }
+            size_t new_head_to_play = PlayingCut(new_pos);
+
             // find any -1 heads_to_play and replace it with the new head
             for (size_t j = 3; j < 6; j++) {
               if (heads_to_play[j] == -1) {
@@ -221,8 +253,10 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular_l,
           } else {
             out[i] += buf_tape[head_play[head].pos] *
                       crossfade_cos_out[head_play[head].state_time];
-            head_play[head].Move();  // Added this to move the play head
-            continue;
+            out[i + 1] += buf_tape[head_play[head].pos + 1] *
+                          crossfade_cos_out[head_play[head].state_time];
+            head_play[head].Move();
+            i continue;
           }
         }
       }  // end audo block loop

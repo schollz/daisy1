@@ -7,7 +7,7 @@ TapeHead::TapeHead() {
 }
 
 void TapeHead::Move() {
-  pos += direction;
+  pos += direction * 2;  // *2 is for stereo
   state_time++;
 }
 

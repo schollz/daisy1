@@ -11,8 +11,10 @@
 #define INCLUDE_AUDIO_PROFILING 1
 #define AUDIO_BLOCK_SIZE 128
 #define AUDIO_SAMPLE_RATE 48000
-#define MAX_SIZE \
-  (AUDIO_SAMPLE_RATE * 170 * 2)  // 170 seconds of stereo floats at 48 khz
+#define MAX_SECONDS 170
+#define MAX_SIZE                     \
+  (AUDIO_SAMPLE_RATE * MAX_SECONDS * \
+   2)  // 170 seconds of stereo floats at 48 khz
 #define CYCLES_AVAILBLE \
   1066666  // (400000000 * AUDIO_BLOCK_SIZE / AUDIO_SAMPLE_RATE)
 using namespace daisy;
@@ -23,7 +25,7 @@ DaisySeed daisyseed;
 LFO lfotest;
 static ReverbSc rev;
 
-#define NUM_LOOPS 3
+#define NUM_LOOPS 6
 size_t loop_index = 0;
 Color my_colors[5];
 Tape tape[NUM_LOOPS];
@@ -134,19 +136,22 @@ int main(void) {
   hw.led1.SetColor(my_colors[0]);
   hw.led1.Update();
 
-  // intialize tapes
-  for (size_t i = 0; i < NUM_LOOPS; i++) {
-    size_t seconds_start = 30 * i + 1;
-    size_t seconds_end = 30 * (i + 1);
-    tape[i].Init(AUDIO_SAMPLE_RATE * 2 * seconds_start,
-                 AUDIO_SAMPLE_RATE * 2 * seconds_end);
-  }
-
   lfotest.Init(10000, 1.0f, 5.0f);
 
   daisyseed.StartLog(true);
 
-  daisyseed.PrintLine("Verify CRT floating point format: %.3f", 124.0f);
+  // intialize tapes
+  daisyseed.PrintLine("time per loop: %2.1f seconds",
+                      (float)MAX_SECONDS / NUM_LOOPS);
+  for (size_t i = 0; i < NUM_LOOPS; i++) {
+    size_t seconds_start = (i * (MAX_SECONDS - 1) / NUM_LOOPS) + 1;
+    size_t seconds_end = ((i + 1) * (MAX_SECONDS - 1) / NUM_LOOPS);
+    tape[i].Init(AUDIO_SAMPLE_RATE * 2 * seconds_start,
+                 AUDIO_SAMPLE_RATE * 2 * seconds_end);
+    daisyseed.PrintLine("tape[%d] start=%d end=%d (%d)", i,
+                        tape[i].buffer_start / 1000, tape[i].buffer_end / 1000,
+                        MAX_SIZE / 1000);
+  }
 
   // // calibrate dac values
   // for (uint16_t value = 0; value < 4095; value += 500) {

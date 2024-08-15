@@ -70,9 +70,11 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
     tape_circular_buffer.Write(in[i]);
     tape_circular_buffer.Write(in[i + 1]);
   }
+  uint32_t current_time = System::GetNow();
   for (size_t i = 0; i < NUM_LOOPS; i++) {
     tape[i].Process(tape_linear_buffer, tape_circular_buffer,
-                    audiocallback_bufin, audiocallback_bufout, size);
+                    audiocallback_bufin, audiocallback_bufout, size,
+                    current_time);
   }
   // // apply reverb to tape
   // float outl, outr, inl, inr;
@@ -261,10 +263,11 @@ void Controls() {
       if (controls_changed || true) {
         daisyseed.PrintLine(
             "%d, knob1=%2.3f knob2=%2.3f, enc=%d, usage=%2.1f%% per %d "
-            "samples, %2.1f",
+            "samples, lfopan=%2.3f, lfoamp=%2.3f",
             loop_index, knobs_current[0], knobs_current[1], encoder_increment,
             (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f,
-            audiocallback_sample_num, lfotest.Process(currentTime));
+            audiocallback_sample_num, tape[0].lfos[0].Value(),
+            tape[0].lfos[1].Value());
         controls_changed = false;
       }
       lastPrintTime = currentTime;

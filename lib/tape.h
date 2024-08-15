@@ -1,10 +1,12 @@
 #ifndef TAPE_H
 #define TAPE_H
 #include <bitset>
+#include <cstring>
 
 #include "balance2.h"
 #include "circularbuffer.h"
 #include "crossfade.h"
+#include "lfo.h"
 #include "tapehead.h"
 #define TAPE_PLAY_HEADS 3
 
@@ -14,6 +16,11 @@ class Tape {
     DO_ERASE,
     TAPE_FLAG_COUNT,
   };
+  enum TapeLFO {
+    TAPE_LFO_PAN,
+    TAPE_LFO_AMP,
+    TAPE_LFO_COUNT,
+  };
   TapeHead head_rec;
   TapeHead head_play[TAPE_PLAY_HEADS];
   size_t head_play_last_pos = 0;
@@ -21,6 +28,7 @@ class Tape {
   size_t buffer_start = 2 * CROSSFADE_LIMIT;
   size_t buffer_end = buffer_start + buffer_max;
   std::bitset<TAPE_FLAG_COUNT> flags;
+  LFO lfos[TAPE_LFO_COUNT];
 
   void Init(size_t start, size_t max);
   void RecordingStart();
@@ -38,7 +46,7 @@ class Tape {
   void PlayingStop();
   void PlayingReverseToggle();
   void Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
-               float *out, size_t size);
+               float *out, size_t size, uint32_t current_time);
   void SetPan(float pan);
 
  private:

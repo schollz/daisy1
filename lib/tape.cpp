@@ -12,6 +12,17 @@ void Tape::Init(size_t start, size_t max) {
     head_play[i].pos = buffer_start;
     head_play[i].SetState(TapeHead::STOPPED);
   }
+  // initialize the lfos
+  for (size_t i = 0; i < TAPE_LFO_COUNT; i++) {
+    if (i == TAPE_LFO_PAN) {
+      // generate random float between 5000 and 15000
+      float period = 5000.0f + static_cast<float>(rand() % 10000);
+      lfos[i].Init(period, -1, 1);
+    } else if (i == TAPE_LFO_AMP) {
+      float period = 15000.0f + static_cast<float>(rand() % 15000);
+      lfos[i].Init(period, 0, 1);
+    }
+  }
 }
 
 void Tape::RecordingStart() { head_rec.SetState(TapeHead::STARTING); }
@@ -135,7 +146,7 @@ void Tape::PlayingReset() {
 void Tape::PlayingStop() { PlayingFadeOut(); }
 
 void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
-                   float *out, size_t size) {
+                   float *out_main, size_t size, uint32_t current_time) {
   /** <recording> **/
   // recording won't affect the output buffer
   // and will only update the tape buffer (buf_tape)
@@ -182,6 +193,9 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
   /** <playing> **/
   // playing is going to update the output buffer
   if (IsPlayingOrFading()) {
+    // create output buffer
+    float out[size];
+    memset(out, 0, sizeof(out));
     // for each play head, update the output buffer
     // some heads may be stopped and they will be skipped initially
     // however the last three heads_to_play are placeholders
@@ -263,7 +277,21 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
     }    // end head loop
 
     // apply panning
-    Balance2_Process(out, size, pan);
+    lfos[TAPE_LFO_PAN].Update(current_time);
+    Balance2_Process(out, size, lfos[TAPE_LFO_PAN].Value());
+
+    // apply amplitude modulation
+    lfos[TAPE_LFO_AMP].Update(current_time);
+    float val = lfos[TAPE_LFO_AMP].Value();
+    for (size_t i = 0; i < size; i += 2) {
+      out[i] = out[i] * val;
+      out[i + 1] = out[i + 1] * val;
+    }
+    // apply the output buffer to the main output
+    for (size_t i = 0; i < size; i += 2) {
+      out_main[i] += out[i];
+      out_main[i + 1] += out[i + 1];
+    }
   }
 }
 

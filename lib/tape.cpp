@@ -114,8 +114,9 @@ void Tape::PlayingReset() {
 
 void Tape::PlayingStop() { PlayingFadeOut(); }
 
-void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
-                   float *out, size_t samples) {
+void Tape::Process(float *buf_tape, CircularBuffer &buf_circular_l,
+                   CircularBuffer &buf_circular_r, float *in, float *out,
+                   size_t size) {
   /** <recording> **/
   // recording won't affect the output buffer
   // and will only update the tape buffer (buf_tape)
@@ -131,15 +132,15 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
     // reset the recording head to the buffer start
     head_rec.pos = buffer_start;
     // prepend the buffer start with all the samples in the circular buffer
-    size_t circular_size = buf_circular.GetSize();
+    size_t circular_size = buf_circular_l.GetSize();
     for (size_t i = 0; i < circular_size; i++) {
-      buf_tape[buffer_start - circular_size + i - 1] = buf_circular.Read(i);
+      buf_tape[buffer_start - circular_size + i - 1] = buf_circular_l.Read(i);
     }
     head_rec.SetState(TapeHead::STARTED);
   }
   if (head_rec.IsState(TapeHead::STARTED) ||
       head_rec.IsState(TapeHead::STOPPING)) {
-    for (size_t i = 0; i < samples; i++) {
+    for (size_t i = 0; i < size; i++) {
       buf_tape[head_rec.pos] = in[i];
       head_rec.Move();
       if (head_rec.IsState(TapeHead::STARTED)) {
@@ -175,7 +176,7 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
       }
 
       // for each play head, update the output buffer
-      for (size_t i = 0; i < samples; i++) {
+      for (size_t i = 0; i < size; i++) {
         if (i < sample_to_start_on[head_to_play]) {
           continue;
         }

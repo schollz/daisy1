@@ -10,7 +10,8 @@
 #define INCLUDE_AUDIO_PROFILING 1
 #define AUDIO_BLOCK_SIZE 128
 #define AUDIO_SAMPLE_RATE 48000
-#define MAX_SIZE (AUDIO_SAMPLE_RATE * 60 * 5)  // 5 minutes of floats at 48 khz
+#define MAX_SIZE \
+  (AUDIO_SAMPLE_RATE * 170 * 2)  // 170 seconds of stereo floats at 48 khz
 #define CYCLES_AVAILBLE \
   1066666  // (400000000 * AUDIO_BLOCK_SIZE / AUDIO_SAMPLE_RATE)
 using namespace daisy;
@@ -26,7 +27,8 @@ size_t loop_index = 0;
 Color my_colors[5];
 Tape tape[NUM_LOOPS];
 
-CircularBuffer tape_circular_buffer(2 * CROSSFADE_LIMIT);
+CircularBuffer tape_circular_buffer_l(2 * CROSSFADE_LIMIT);
+CircularBuffer tape_circular_buffer_r(2 * CROSSFADE_LIMIT);
 float DSY_SDRAM_BSS tape_linear_buffer[MAX_SIZE];
 float drywet = 0.0;
 
@@ -47,8 +49,8 @@ void GetReverbSample(float &outl, float &outr, float inl, float inr) {
 
 size_t audiocallback_sample_num = 0;
 uint32_t audiocallback_time_needed = 0;
-float audiocallback_bufin[AUDIO_BLOCK_SIZE];
-float audiocallback_bufout[AUDIO_BLOCK_SIZE];
+float audiocallback_bufin[AUDIO_BLOCK_SIZE * 2];
+float audiocallback_bufout[AUDIO_BLOCK_SIZE * 2];
 static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
                           AudioHandle::InterleavingOutputBuffer out,
                           size_t size) {
@@ -63,12 +65,14 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
   memset(audiocallback_bufout, 0, sizeof(audiocallback_bufout));
   // copy in left channel to bufin
   for (size_t i = 0; i < size; i += 2) {
-    audiocallback_bufin[i / 2] = in[i];
-    tape_circular_buffer.Write(in[i]);
+    audiocallback_bufin[i] = in[i];
+    tape_circular_buffer_l.Write(in[i]);
+    tape_circular_buffer_r.Write(in[i + 1]);
   }
   for (size_t i = 0; i < NUM_LOOPS; i++) {
-    tape[i].Process(tape_linear_buffer, tape_circular_buffer,
-                    audiocallback_bufin, audiocallback_bufout, size / 2);
+    tape[i].Process(tape_linear_buffer, tape_circular_buffer_l,
+                    tape_circular_buffer_r, audiocallback_bufin,
+                    audiocallback_bufout, size);
   }
   // // apply reverb to tape
   // float outl, outr, inl, inr;
@@ -83,8 +87,8 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
 
   // passthrough
   for (size_t i = 0; i < size; i += 2) {
-    out[i] = in[i] + audiocallback_bufout[i / 2];
-    out[i + 1] = in[i + 1] + audiocallback_bufout[i / 2];
+    out[i] = in[i] + audiocallback_bufout[i];
+    out[i + 1] = in[i + 1] + audiocallback_bufout[i + 1];
   }
 
 #ifdef INCLUDE_AUDIO_PROFILING

@@ -35,8 +35,9 @@ class Tape {
   void PlayingToggle();
   void PlayingReset();
   void PlayingStop();
-  void Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
-               float *out, size_t samples);
+  void Process(float *buf_tape, CircularBuffer &buf_circular_l,
+               CircularBuffer &buf_circular_r, float *in, float *out,
+               size_t size);
 };
 
 #endif

@@ -5,6 +5,7 @@
 #include "core_cm7.h"
 #include "daisy_pod.h"
 #include "daisysp.h"
+#include "lib/lfo.h"
 #include "lib/tape.h"
 
 #define INCLUDE_AUDIO_PROFILING 1
@@ -19,7 +20,7 @@ using namespace daisysp;
 
 DaisyPod hw;
 DaisySeed daisyseed;
-
+LFO lfotest;
 static ReverbSc rev;
 
 #define NUM_LOOPS 2
@@ -136,6 +137,8 @@ int main(void) {
     tape[i].Init(AUDIO_SAMPLE_RATE * 2 * (i * 25 + 3),
                  AUDIO_SAMPLE_RATE * 2 * (i + 1) * 25);
   }
+
+  lfotest.Init(10000, 1.0f, 5.0f);
 
   daisyseed.StartLog(true);
 
@@ -255,12 +258,13 @@ void Controls() {
   if (printInterval > 0) {
     uint32_t currentTime = System::GetNow();
     if (currentTime - lastPrintTime >= printInterval) {
-      if (controls_changed) {
+      if (controls_changed || true) {
         daisyseed.PrintLine(
-            "%d, knob1=%2.3f knob2=%2.3f, enc=%d, usage=%2.1f%% per %d samples",
+            "%d, knob1=%2.3f knob2=%2.3f, enc=%d, usage=%2.1f%% per %d "
+            "samples, %2.1f",
             loop_index, knobs_current[0], knobs_current[1], encoder_increment,
             (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f,
-            audiocallback_sample_num);
+            audiocallback_sample_num, lfotest.Process(currentTime));
         controls_changed = false;
       }
       lastPrintTime = currentTime;

@@ -135,6 +135,8 @@ void Tape::PlayingToggle() {
   }
 }
 
+void Tape::PlayingRestart() { PlayingCut(buffer_start); }
+
 void Tape::PlayingReset() {
   head_play_last_pos = buffer_start;
   if (head_play[0].direction == TapeHead::BACKWARD) {

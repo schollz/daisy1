@@ -26,15 +26,18 @@ LFO lfotest;
 static ReverbSc rev;
 
 #define NUM_LOOPS 6
+float bpm_set = 120.0f;
 size_t loop_index = 0;
 Color my_colors[5];
 Tape tape[NUM_LOOPS];
+Metro print_timer;
+Metro bpm_measure;  // 4 quarer notes
 
 CircularBuffer tape_circular_buffer(2 * 2 * CROSSFADE_LIMIT);
 float DSY_SDRAM_BSS tape_linear_buffer[MAX_SIZE];
 float drywet = 0.0;
 
-void Controls();
+void Controls(float audio_level);
 void SetVoltage(float voltage) {
   voltage -= 0.055f;
   float val = roundf(1281.572171 * voltage - 12.21070518);
@@ -61,7 +64,14 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
   DWT->CYCCNT = 0;
   audiocallback_sample_num = size / 2;
 #endif
-  Controls();
+
+  // find abs level from input
+  float abs_level = 0.0f;
+  for (size_t i = 0; i < size; i += 2) {
+    abs_level += fabsf(in[i]);
+    abs_level += fabsf(in[i + 1]);
+  }
+  Controls(abs_level);
 
   // clear bufout
   memset(audiocallback_bufout, 0, sizeof(audiocallback_bufout));
@@ -138,6 +148,8 @@ int main(void) {
 
   lfotest.Init(10000, 1.0f, 5.0f);
 
+  print_timer.Init(1.0f, AUDIO_SAMPLE_RATE / AUDIO_BLOCK_SIZE);
+  bpm_measure.Init(60.0f / bpm_set, AUDIO_SAMPLE_RATE / AUDIO_BLOCK_SIZE);
   daisyseed.StartLog(true);
 
   // intialize tapes
@@ -160,7 +172,7 @@ int main(void) {
   //   System::Delay(3000);
   // }
 
-  hw.SetAudioBlockSize(128);
+  hw.SetAudioBlockSize(AUDIO_BLOCK_SIZE);
 
   // initialize
   rev.Init(hw.AudioSampleRate());
@@ -183,7 +195,7 @@ bool controls_changed = false;
 float knobs_last[2] = {0, 0};
 float knobs_current[2] = {0, 0};
 float button_time_pressed[3] = {0, 0};
-void Controls() {
+void Controls(float audio_level) {
   hw.ProcessAnalogControls();
   hw.ProcessDigitalControls();
 
@@ -216,6 +228,11 @@ void Controls() {
                           tape[loop_index].buffer_start,
                           tape[loop_index].buffer_end);
     }
+  }
+  if (audio_level > 2 && !tape[loop_index].IsRecording()) {
+    tape[loop_index].RecordingStart();
+  } else if (audio_level < 0.01 && tape[loop_index].IsRecording()) {
+    tape[loop_index].RecordingStop();
   }
   if (hw.encoder.Pressed()) {
     button_time_pressed[2] = hw.encoder.TimeHeldMs();
@@ -267,18 +284,24 @@ void Controls() {
     controls_changed = true;
   }
 
-  // debugging print at specified interval
-  if (printInterval > 0) {
+  if (bpm_measure.Process()) {
+    daisyseed.PrintLine("bpm_measure");
+    for (size_t i = 0; i < NUM_LOOPS; i++) {
+      if (tape[i].IsPlayingOrFading()) {
+        tape[i].PlayingRestart();
+      }
+    }
+  } else if (print_timer.Process()) {
     uint32_t currentTime = System::GetNow();
     if (currentTime - lastPrintTime >= printInterval) {
       if (controls_changed || true) {
         daisyseed.PrintLine(
             "%d, knob1=%2.3f knob2=%2.3f, enc=%d, usage=%2.1f%% per %d "
-            "samples, lfopan=%2.3f, lfoamp=%2.3f",
+            "samples, lfopan=%2.3f, lfoamp=%2.3f, audio=%2.4f",
             loop_index, knobs_current[0], knobs_current[1], encoder_increment,
             (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f,
             audiocallback_sample_num, tape[0].lfos[0].Value(),
-            tape[0].lfos[1].Value());
+            tape[0].lfos[1].Value(), audio_level);
         controls_changed = false;
       }
       lastPrintTime = currentTime;

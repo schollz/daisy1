@@ -44,6 +44,7 @@ class Tape {
   void PlayingStart();
   void PlayingToggle();
   void PlayingReset();
+  void PlayingRestart();
   void PlayingStop();
   void PlayingReverseToggle();
   void Process(float *buf_tape, CircularBuffer &buf_circular, float *in,

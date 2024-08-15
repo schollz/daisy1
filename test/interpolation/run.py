@@ -25,7 +25,7 @@ def plot_monotonic_sequences():
     for i in range(1, len(col1)):
         if col1[i] < col1[i - 1]:
             if start_index < i - 1:
-                plt.plot(col1[start_index:i], col2[start_index:i], "b.-")
+                plt.plot(col1[start_index:i], col2[start_index:i], "bo-")
             start_index = i
     # Plot the last sequence if it's increasing
     if start_index < len(col1) - 1:

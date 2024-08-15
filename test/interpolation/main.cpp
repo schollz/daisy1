@@ -68,7 +68,7 @@ class SampleRateConverter {
 };
 
 int main() {
-  float rate = 1.74f;  // Determine rate based on sizes
+  float rate = 1.0f;  // Determine rate based on sizes
   size_t output_size = 128;
   size_t input_size = static_cast<size_t>(rate * output_size);
   SampleRateConverter converter(rate);

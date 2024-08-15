@@ -53,12 +53,14 @@ class SampleRateConverter {
 
  private:
   // Hermite interpolation
-  float hermiteInterpolate(float t, float y0, float y1, float y2, float y3) {
-    float c0 = y1;
-    float c1 = 0.5f * (y2 - y0);
-    float c2 = y0 - 2.5f * y1 + 2.0f * y2 - 0.5f * y3;
-    float c3 = -0.5f * (y0 - 3.0f * y1 + 3.0f * y2 - y3);
-    return ((c3 * t + c2) * t + c1) * t + c0;
+  inline float hermiteInterpolate(float t, float y0, float y1, float y2,
+                                  float y3) {
+    float t2 = t * t;
+    float t3 = t2 * t;
+    float a = y2 - y1;
+    float b = a - 0.5f * (y3 - y0);
+    float c = 0.5f * (y2 - y0) - b;
+    return (b * t3 + c * t2 + a * t) + y1;
   }
   float fractional_index = 0;  // Keeps track of the fractional position for
   bool initialized =

@@ -194,7 +194,12 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
   // playing is going to update the output buffer
   if (IsPlayingOrFading()) {
     // create output buffer
-    float out[size];
+    // number of samples needed changes
+    // depending on the `rate` of playback
+    size_t size_buf = (size_t)roundf((float)size / rate);
+
+    float out[size_buf];
+
     memset(out, 0, sizeof(out));
     // for each play head, update the output buffer
     // some heads may be stopped and they will be skipped initially
@@ -211,7 +216,7 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
       }
 
       // for each play head, update the output buffer
-      for (size_t i = 0; i < size; i += 2) {
+      for (size_t i = 0; i < size_buf; i += 2) {
         if (i < sample_to_start_on[head_to_play]) {
           continue;
         }

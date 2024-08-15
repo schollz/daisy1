@@ -23,7 +23,7 @@ DaisySeed daisyseed;
 LFO lfotest;
 static ReverbSc rev;
 
-#define NUM_LOOPS 2
+#define NUM_LOOPS 3
 size_t loop_index = 0;
 Color my_colors[5];
 Tape tape[NUM_LOOPS];
@@ -127,17 +127,19 @@ int main(void) {
 
   my_colors[0].Init(Color::PresetColor::RED);
   my_colors[1].Init(Color::PresetColor::GREEN);
-  my_colors[2].Init(Color::PresetColor::BLUE);
+  my_colors[2].Init(Color::PresetColor::WHITE);
   // yellow
   my_colors[3].Init(0.9f, 0.9f, 0.0f);
-  my_colors[4].Init(Color::PresetColor::GOLD);
+  my_colors[4].Init(Color::PresetColor::BLUE);
   hw.led1.SetColor(my_colors[0]);
   hw.led1.Update();
 
   // intialize tapes
   for (size_t i = 0; i < NUM_LOOPS; i++) {
-    tape[i].Init(AUDIO_SAMPLE_RATE * 2 * (i * 25 + 3),
-                 AUDIO_SAMPLE_RATE * 2 * (i + 1) * 25);
+    size_t seconds_start = 30 * i + 1;
+    size_t seconds_end = 30 * (i + 1);
+    tape[i].Init(AUDIO_SAMPLE_RATE * 2 * seconds_start,
+                 AUDIO_SAMPLE_RATE * 2 * seconds_end);
   }
 
   lfotest.Init(10000, 1.0f, 5.0f);
@@ -240,7 +242,7 @@ void Controls() {
   if (inc != 0) {
     encoder_increment += inc;
     controls_changed = true;
-    loop_index = encoder_increment % NUM_LOOPS;
+    loop_index = abs(encoder_increment) % NUM_LOOPS;
   }
 
   // make array of knob processes

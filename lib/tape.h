@@ -51,6 +51,7 @@ class Tape {
 
  private:
   float pan = 0;
+  float rate = 1.0f;
 };
 
 #endif

@@ -103,42 +103,65 @@ class SampleRateConverter {
 };
 
 int main() {
-  SampleRateConverter converter(0.1f);  // Upsample by 2.5
-  std::vector<float> output_samples;
-  std::vector<float> all_output_samples;
+  size_t size = 128 / 4;
+  float rate = 0.5f;
+  SampleRateConverter converter(rate);  // Upsample by 2.5
 
-  // Input sequence to be processed
-  std::vector<float> input_sequence = {};
-  // add a sine wave to the input sequence
-  for (size_t i = 0; i < 100; i++) {
-    input_sequence.push_back(0.5f * std::sin(2.0f * M_PI * 0.01f * i));
-  }
-  // add some random values to the input sequence
-  for (size_t i = 0; i < 100; i++) {
-    input_sequence.push_back(0.5f * (rand() / (float)RAND_MAX - 0.5f));
+  std::vector<float> inputs;
+  std::vector<float> outputs;
+  std::vector<float> leftover;
+  for (float t = 0; t < 30; t++) {
+    size_t samples_needed = (size_t)roundf((float)size * rate);
+    samples_needed -= leftover.size() * rate;
+    float buf[samples_needed];
+    // load the buffer with some values
+    for (size_t i = 0; i < samples_needed; i++) {
+      buf[i] = 0.5f * std::sin(2.0f * M_PI * 0.01f *
+                               (i + roundf((float)size * rate) * t));
+      // add to inputs
+      inputs.push_back(buf[i]);
+    }
+
+    // output buffer is fixed size
+    float buf_out[size];
+    // populate the output buffer with leftover samples
+    size_t leftover_size = leftover.size();
+    for (size_t i = 0; i < leftover_size; i++) {
+      buf_out[i] = leftover[i];
+    }
+    // load the output buffer with sample converted values
+    std::vector<float> output_samples;
+    size_t j = leftover_size;
+    for (size_t i = 0; i < samples_needed; i++) {
+      output_samples = converter.processSample(buf[i]);
+      for (size_t k = 0; k < output_samples.size(); k++) {
+        if (j < size) {
+          buf_out[j] = output_samples[k];
+          outputs.push_back(output_samples[k]);
+          j++;
+        } else {
+          leftover.push_back(output_samples[k]);
+          std::cout << "number of leftover samples: " << leftover.size()
+                    << std::endl;
+        }
+      }
+    }
   }
 
-  // Process each sample in the input sequence
-  for (float input_sample : input_sequence) {
-    output_samples = converter.processSample(input_sample);
-    all_output_samples.insert(all_output_samples.end(), output_samples.begin(),
-                              output_samples.end());
+  // plot the inputs
+  // print the total size of inputs
+  std::cout << "2) inputs.size(): " << inputs.size() << std::endl;
+  for (size_t i = 0; i < inputs.size(); i++) {
+    std::cout << (float)i / (inputs.size() - 1) << " " << inputs[i]
+              << std::endl;
   }
-  // enumerate the input samples
-  // prepend input sequence with 4 samples
-  // remove first 4 values from input sequence
-  size_t start = 0;
-#ifdef USE_HERMITE
-  start = 3;
-#endif
-  for (size_t i = 0; i < input_sequence.size() - start; i++) {
-    std::cout << (float)i / (input_sequence.size() - 1 - start) << " "
-              << input_sequence[i] << std::endl;
+  // plot the outputs
+  // print total size of outputs
+  std::cout << "2) outputs.size(): " << outputs.size() << std::endl;
+  for (size_t i = 0; i < outputs.size(); i++) {
+    std::cout << (float)i / (outputs.size() - 1) << " " << outputs[i]
+              << std::endl;
   }
-  // enumerate the output samples
-  for (size_t i = start; i < all_output_samples.size(); i++) {
-    std::cout << (float)i / (all_output_samples.size() - 1 - start) << " "
-              << all_output_samples[i] << std::endl;
-  }
+
   return 0;
 }

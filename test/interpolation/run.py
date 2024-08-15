@@ -14,17 +14,22 @@ def plot_monotonic_sequences():
         if len(parts) == 2:
             col1.append(float(parts[0]))
             col2.append(float(parts[1]))
+        else:
+            print(line)
+    if not col1 or not col2:
+        print("No data found")
+        return
 
     # Find and plot monotonically increasing sequences
     start_index = 0
     for i in range(1, len(col1)):
         if col1[i] < col1[i - 1]:
             if start_index < i - 1:
-                plt.plot(col1[start_index:i], col2[start_index:i])
+                plt.plot(col1[start_index:i], col2[start_index:i], "b.-")
             start_index = i
     # Plot the last sequence if it's increasing
     if start_index < len(col1) - 1:
-        plt.plot(col1[start_index:], col2[start_index:])
+        plt.plot(col1[start_index:], col2[start_index:], "r.-")
 
     plt.xlabel("First Column")
     plt.ylabel("Second Column")

@@ -193,12 +193,12 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
   /** <playing> **/
   // playing is going to update the output buffer
   if (IsPlayingOrFading()) {
-    // create output buffer
-    // number of samples needed changes
-    // depending on the `rate` of playback
-    size_t size_buf = (size_t)roundf((float)size / rate);
+    size_t output_size = size;
 
-    float out[size_buf];
+    // need to add two extra interleaved samples for Hermite interpolation
+    size_t input_size = (size_t)roundf((float)size / rate) + 2 * 2;
+
+    float out[input_size];
 
     memset(out, 0, sizeof(out));
     // for each play head, update the output buffer
@@ -216,7 +216,13 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
       }
 
       // for each play head, update the output buffer
-      for (size_t i = 0; i < size_buf; i += 2) {
+      for (size_t i = 0; i < input_size; i += 2) {
+        if (i == input_size - 4) {
+          // now we are peeking, so set the head to peeking
+          // so that we can undo any changes that happen for the next two
+          // samples
+          head_play[head].Peek();
+        }
         if (i < sample_to_start_on[head_to_play]) {
           continue;
         }

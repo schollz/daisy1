@@ -7,6 +7,7 @@
 #include "circularbuffer.h"
 #include "crossfade.h"
 #include "lfo.h"
+#include "resampler.h"
 #include "tapehead.h"
 #define TAPE_PLAY_HEADS 3
 
@@ -52,6 +53,7 @@ class Tape {
  private:
   float pan = 0;
   float rate = 1.0f;
+  SampleRateConverter resample;
 };
 
 #endif

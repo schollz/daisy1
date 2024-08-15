@@ -25,7 +25,10 @@ class SampleRateConverter {
       last_sample = input_buffer[0];
     }
 
-    float input_index_increment = static_cast<float>(input_size) / output_size;
+    // 2 extra samples are needed for Hermite interpolation
+    // so the increment is calculated based on the input size - 2
+    float input_index_increment =
+        static_cast<float>(input_size - 2) / output_size;
     float input_index = 0.0f;
 
     for (size_t i = 0; i < output_size; ++i) {
@@ -62,6 +65,42 @@ class SampleRateConverter {
   bool initialized =
       false;          // Flag to check if the first sample has been initialized
   float last_sample;  // Last sample from the previous buffer
+};
+
+// Reasmpler works on interleaved stereo audio
+class Resampler {
+ public:
+  Resampler();
+  void Process(const float* input_buffer, size_t input_size,
+               float* output_buffer, size_t output_size) {
+    std::vector<float> input_left(input_size / 2);
+    std::vector<float> input_right(input_size / 2);
+    std::vector<float> output_left(output_size / 2);
+    std::vector<float> output_right(output_size / 2);
+
+    // Deinterleave the input buffer, which should have 2 extra samples for
+    // Hermite interpolation
+    for (size_t i = 0; i < input_size / 2; ++i) {
+      input_left[i] = input_buffer[2 * i];
+      input_right[i] = input_buffer[2 * i + 1];
+    }
+
+    // Process the left and right channels
+    output_left = converter_left.Process(input_left.data(), input_size / 2,
+                                         output_size / 2);
+    output_right = converter_right.Process(input_right.data(), input_size / 2,
+                                           output_size / 2);
+
+    // Interleave the output buffer
+    for (size_t i = 0; i < output_size / 2; ++i) {
+      output_buffer[2 * i] = output_left[i];
+      output_buffer[2 * i + 1] = output_right[i];
+    }
+  }
+
+ private:
+  SampleRateConverter converter_left;
+  SampleRateConverter converter_right;
 };
 
 #endif  // RESAMPLER_H_

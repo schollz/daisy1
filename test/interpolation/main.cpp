@@ -1,9 +1,11 @@
+#include <iostream>
+
 #include "../../lib/resampler.h"
 
 int main() {
-  float rate = 0.5f;  // Determine rate based on sizes
+  float rate = 0.8f;  // Determine rate based on sizes
   size_t output_size = 128;
-  size_t input_size = static_cast<size_t>(rate * output_size) + 2;
+  size_t input_size = static_cast<size_t> roundf(output_size * rate) + 2;
   SampleRateConverter converter;
   std::vector<float> all_inputs;
   std::vector<float> all_outputs;

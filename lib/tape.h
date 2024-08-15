@@ -49,11 +49,12 @@ class Tape {
   void Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
                float *out, size_t size, uint32_t current_time);
   void SetPan(float pan);
+  void SetRate(float rate);
 
  private:
   float pan = 0;
   float rate = 1.0f;
-  SampleRateConverter resample;
+  Resampler resampler;
 };
 
 #endif

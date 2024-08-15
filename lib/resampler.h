@@ -2,7 +2,6 @@
 #define RESAMPLER_H_
 
 #include <cmath>
-#include <iostream>
 #include <stdexcept>
 #include <vector>
 
@@ -70,7 +69,7 @@ class SampleRateConverter {
 // Reasmpler works on interleaved stereo audio
 class Resampler {
  public:
-  Resampler();
+  Resampler(){};
   void Process(const float* input_buffer, size_t input_size,
                float* output_buffer, size_t output_size) {
     std::vector<float> input_left(input_size / 2);
@@ -93,8 +92,8 @@ class Resampler {
 
     // Interleave the output buffer
     for (size_t i = 0; i < output_size; i += 2) {
-      output_buffer[i] = output_left[i];
-      output_buffer[i + 1] = output_right[i];
+      output_buffer[i] += output_left[i / 2];
+      output_buffer[i + 1] += output_right[i / 2];
     }
   }
 

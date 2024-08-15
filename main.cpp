@@ -249,12 +249,16 @@ void Controls() {
   knobs_current[0] = roundf(hw.knob1.Process() * 500) / 500;
   if (knobs_current[0] != knobs_last[0]) {
     knobs_last[0] = knobs_current[0];
-    tape[0].SetPan(knobs_current[0] * 2.0f - 1.0f);
+    tape[loop_index].SetPan(knobs_current[0] * 2.0f - 1.0f);
     controls_changed = true;
   }
   knobs_current[1] = roundf(hw.knob2.Process() * 500) / 500;
   if (knobs_current[1] != knobs_last[1]) {
     knobs_last[1] = knobs_current[1];
+    if (tape[loop_index].IsPlayingOrFading()) {
+      // daisyseed.PrintLine("setting rate to %2.1f", new_rate);
+      tape[loop_index].SetRate(hw.knob2.Process() * 2);
+    }
     controls_changed = true;
   }
 

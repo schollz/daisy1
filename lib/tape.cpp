@@ -194,9 +194,13 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
   // playing is going to update the output buffer
   if (IsPlayingOrFading()) {
     // need to add two extra interleaved samples for Hermite interpolation
-    size_t input_size = (size_t)roundf((float)size / rate) + 2 * 2;
+    size_t input_size =
+        static_cast<size_t>(roundf(static_cast<float>(size / 2) * rate) * 2) +
+        4;
 
     float out[input_size];
+    size_t head_play_last_pos_before_peek = 0;
+    bool head_play_last_pos_is_set = false;
 
     memset(out, 0, sizeof(out));
     // for each play head, update the output buffer
@@ -220,10 +224,16 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
           // so that we can undo any changes that happen for the next two
           // samples
           head_play[head].Peek();
+          if (head_play_last_pos_is_set == false) {
+            head_play_last_pos_is_set = true;
+            head_play_last_pos_before_peek = head_play_last_pos;
+          }
         }
+
         if (i < sample_to_start_on[head_to_play]) {
           continue;
         }
+
         // if starting, crossfade in
         if (head_play[head].IsState(TapeHead::STARTING)) {
           if (head_play[head].state_time >= CROSSFADE_LIMIT) {
@@ -283,30 +293,37 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
           }
         }
       }  // end audo block loop
-    }    // end head loop
-
-    // unpeek all the heads
-    for (size_t head = 0; head < TAPE_PLAY_HEADS; head++) {
+      // unpeek
       head_play[head].UnPeek();
+    }  // end head loop
+
+    if (head_play_last_pos_is_set) {
+      head_play_last_pos = head_play_last_pos_before_peek;
     }
 
     // apply panning
     lfos[TAPE_LFO_PAN].Update(current_time);
-    Balance2_Process(out, size, lfos[TAPE_LFO_PAN].Value());
+    Balance2_Process(out, input_size, lfos[TAPE_LFO_PAN].Value());
 
     // apply amplitude modulation
     lfos[TAPE_LFO_AMP].Update(current_time);
     float val = lfos[TAPE_LFO_AMP].Value();
-    for (size_t i = 0; i < size; i += 2) {
+    for (size_t i = 0; i < input_size; i += 2) {
       out[i] = out[i] * val;
       out[i + 1] = out[i + 1] * val;
     }
-    // apply the output buffer to the main output
-    for (size_t i = 0; i < size; i += 2) {
-      out_main[i] += out[i];
-      out_main[i + 1] += out[i + 1];
-    }
+
+    // resample the output buffer and add it to the main output
+    resampler.Process(out, input_size, out_main, size);
+
+    // // apply the output buffer to the main output
+    // for (size_t i = 0; i < size; i += 2) {
+    //   out_main[i] += out[i];
+    //   out_main[i + 1] += out[i + 1];
+    // }
   }
 }
 
 void Tape::SetPan(float pan) { this->pan = pan; }
+
+void Tape::SetRate(float rate) { this->rate = rate; }

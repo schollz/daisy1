@@ -256,10 +256,15 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
             out[i + 1] += buf_tape[head_play[head].pos + 1] *
                           crossfade_cos_out[head_play[head].state_time];
             head_play[head].Move();
-            i continue;
+            continue;
           }
         }
       }  // end audo block loop
     }    // end head loop
+
+    // apply panning
+    Balance2_Process(out, size, pan);
   }
 }
+
+void Tape::SetPan(float pan) { this->pan = pan; }

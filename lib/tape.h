@@ -2,6 +2,7 @@
 #define TAPE_H
 #include <bitset>
 
+#include "balance2.h"
 #include "circularbuffer.h"
 #include "crossfade.h"
 #include "tapehead.h"
@@ -38,6 +39,10 @@ class Tape {
   void PlayingReverseToggle();
   void Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
                float *out, size_t size);
+  void SetPan(float pan);
+
+ private:
+  float pan = 0;
 };
 
 #endif

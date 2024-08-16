@@ -24,14 +24,35 @@ DaisyPod hw;
 DaisySeed daisyseed;
 LFO lfotest;
 static ReverbSc rev;
+// frequencies in C scale
+float c_major_scale[] = {
+    // C2 to B2
+    65.41, 73.42, 82.41, 87.31, 98.00, 110.00, 123.47,
+    // C3 to B3
+    // 7
+    130.81, 146.83, 164.81, 174.61, 196.00, 220.00, 246.94,
+    // C4 to B4
+    // 14
+    261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25};
+
+// C3 C3 C3 D3
+// A3 A3 G3 G3
+// E4 F4 E4 B4
+// A2 F2 C2 G2
+
+size_t acrostic[] = {
+    14, 14, 14, 15, 12, 12, 11, 11, 16, 17, 16, 20, 18, 14, 9, 10,
+};
+size_t acrostic_i = 15;
 
 #define NUM_LOOPS 6
-float bpm_set = 120.0f;
+float bpm_set = 30.0f;
 size_t loop_index = 0;
 Color my_colors[5];
 Tape tape[NUM_LOOPS];
 Metro print_timer;
-Metro bpm_measure;  // 4 quarer notes
+Metro bpm_measure;          // 4 quarer notes
+Metro bpm_measure_quarter;  // 1 quarter note
 
 CircularBuffer tape_circular_buffer(2 * 2 * CROSSFADE_LIMIT);
 float DSY_SDRAM_BSS tape_linear_buffer[MAX_SIZE];
@@ -88,22 +109,23 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
                     audiocallback_bufin, audiocallback_bufout, size,
                     current_time);
   }
-  // // apply reverb to tape
-  // float outl, outr, inl, inr;
-  // for (size_t i = 0; i < size; i += 2) {
-  //   // apply reverb
-  //   inl = audiocallback_bufout[i];
-  //   inr = inl;
-  //   GetReverbSample(outl, outr, inl, inr);
-  //   out[i] = outl;
-  //   out[i + 1] = outr;
-  // }
 
   // passthrough
   for (size_t i = 0; i < size; i += 2) {
     out[i] = in[i] + audiocallback_bufout[i];
     out[i + 1] = in[i + 1] + audiocallback_bufout[i + 1];
   }
+
+  // // apply reverb to tape
+  // float outl, outr, inl, inr;
+  // for (size_t i = 0; i < size; i += 2) {
+  //   // apply reverb
+  //   inl = out[i];
+  //   inr = out[i + 1];
+  //   GetReverbSample(outl, outr, inl, inr);
+  //   out[i] = outl;
+  //   out[i + 1] = outr;
+  // }
 
 #ifdef INCLUDE_AUDIO_PROFILING
   audiocallback_time_needed = DWT->CYCCNT;
@@ -149,7 +171,9 @@ int main(void) {
   lfotest.Init(10000, 1.0f, 5.0f);
 
   print_timer.Init(1.0f, AUDIO_SAMPLE_RATE / AUDIO_BLOCK_SIZE);
-  bpm_measure.Init(60.0f / bpm_set, AUDIO_SAMPLE_RATE / AUDIO_BLOCK_SIZE);
+  bpm_measure.Init(bpm_set / 60.0f / 10, AUDIO_SAMPLE_RATE / AUDIO_BLOCK_SIZE);
+  bpm_measure_quarter.Init(bpm_set / 60.0,
+                           AUDIO_SAMPLE_RATE / AUDIO_BLOCK_SIZE);
   daisyseed.StartLog(true);
 
   // intialize tapes
@@ -171,13 +195,29 @@ int main(void) {
   //   daisyseed.PrintLine("DAC value: %d", value);
   //   System::Delay(3000);
   // }
+  // for (uint16_t value = 2000; value < 4095; value += 250) {
+  //   daisyseed.dac.WriteValue(DacHandle::Channel::TWO, value);
+  //   daisyseed.PrintLine("DAC value: %d", value);
+  //   System::Delay(3000);
+  // }
+
+  // for (uint8_t i = 0; i < 10; i++) {
+  //   for (uint16_t t = 0; t < 16; t++) {
+  //     uint16_t val =
+  //         roundf(847.3722995 * log(c_major_scale[acrostic[t]]) -
+  //         1624.788016);
+  //     daisyseed.PrintLine("DAC value: %d", val);
+  //     daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
+  //     System::Delay(1000);
+  //   }
+  // }
 
   hw.SetAudioBlockSize(AUDIO_BLOCK_SIZE);
 
   // initialize
   rev.Init(hw.AudioSampleRate());
   rev.SetLpFreq(18000.0f);
-  rev.SetFeedback(0.85f);
+  rev.SetFeedback(0.9f);
 
   // start callback
   hw.StartAdc();
@@ -279,18 +319,36 @@ void Controls(float audio_level) {
     knobs_last[1] = knobs_current[1];
     if (tape[loop_index].IsPlayingOrFading()) {
       // daisyseed.PrintLine("setting rate to %2.1f", new_rate);
-      tape[loop_index].SetRate(hw.knob2.Process() * 2);
+      // tape[loop_index].SetRate(hw.knob2.Process() * 2);
     }
     controls_changed = true;
   }
 
-  if (bpm_measure.Process()) {
-    daisyseed.PrintLine("bpm_measure");
-    for (size_t i = 0; i < NUM_LOOPS; i++) {
-      if (tape[i].IsPlayingOrFading()) {
-        tape[i].PlayingRestart();
+  if (bpm_measure_quarter.Process()) {
+    acrostic_i++;
+    uint16_t val =
+        roundf(847.3722995 * log(c_major_scale[acrostic[acrostic_i % 16]]) -
+               1624.788016);
+    // daisyseed.PrintLine("DAC value: %d", val);
+    daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
+    if (acrostic_i % 4 == 0) {
+      for (size_t i = 0; i < NUM_LOOPS; i++) {
+        if (tape[i].IsPlayingOrFading()) {
+          tape[i].PlayingRestart();
+        }
       }
+      if (acrostic_i <= 32) {
+        tape[loop_index].RecordingStop();
+      }
+      if (acrostic_i < 32) {
+        daisyseed.PrintLine("recording measure %d", acrostic_i % 4);
+        loop_index++;
+        tape[loop_index].RecordingStart();
+      }
+    } else {
+      daisyseed.PrintLine("bpm beat %d", acrostic_i % 4);
     }
+
   } else if (print_timer.Process()) {
     uint32_t currentTime = System::GetNow();
     if (currentTime - lastPrintTime >= printInterval) {

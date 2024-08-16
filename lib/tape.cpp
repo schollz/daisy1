@@ -20,7 +20,7 @@ void Tape::Init(size_t start, size_t max) {
       lfos[i].Init(period, -1, 1);
     } else if (i == TAPE_LFO_AMP) {
       float period = 15000.0f + static_cast<float>(rand() % 15000);
-      lfos[i].Init(period, 0, 1);
+      lfos[i].Init(period, 0.5, 1);
     }
   }
 }

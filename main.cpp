@@ -112,8 +112,8 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
 
   // passthrough
   for (size_t i = 0; i < size; i += 2) {
-    out[i] = in[i] + audiocallback_bufout[i];
-    out[i + 1] = in[i + 1] + audiocallback_bufout[i + 1];
+    out[i] = (0.5 * in[i]) + audiocallback_bufout[i];
+    out[i + 1] = (0.5 * in[i + 1]) + audiocallback_bufout[i + 1];
   }
 
   // apply reverb to tape

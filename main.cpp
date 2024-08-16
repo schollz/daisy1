@@ -1,6 +1,8 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <map>
+#include <vector>
 
 #include "core_cm7.h"
 #include "daisy_pod.h"
@@ -24,29 +26,45 @@ DaisyPod hw;
 DaisySeed daisyseed;
 LFO lfotest;
 static ReverbSc rev;
-// frequencies in C scale
-float c_major_scale[] = {
-    // C2 to B2
-    65.41, 73.42, 82.41, 87.31, 98.00, 110.00, 123.47,
-    // C3 to B3
-    // 7
-    130.81, 146.83, 164.81, 174.61, 196.00, 220.00, 246.94,
-    // C4 to B4
-    // 14
-    261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25};
+int8_t measure_measure_count = -1;
+int8_t measure_beat_count = -1;
+std::map<std::string, float> noteFrequencies = {
+    {"C2", 65.41},    {"C#2", 69.30},   {"D2", 73.42},    {"D#2", 77.78},
+    {"E2", 82.41},    {"F2", 87.31},    {"F#2", 92.50},   {"G2", 98.00},
+    {"G#2", 103.83},  {"A2", 110.00},   {"A#2", 116.54},  {"B2", 123.47},
 
-// C3 C3 C3 D3
-// A3 A3 G3 G3
-// E4 F4 E4 B4
-// A2 F2 C2 G2
+    {"C3", 130.81},   {"C#3", 138.59},  {"D3", 146.83},   {"D#3", 155.56},
+    {"E3", 164.81},   {"F3", 174.61},   {"F#3", 185.00},  {"G3", 196.00},
+    {"G#3", 207.65},  {"A3", 220.00},   {"A#3", 233.08},  {"B3", 246.94},
 
-size_t acrostic[] = {
-    14, 14, 14, 15, 12, 12, 11, 11, 16, 17, 16, 20, 18, 14, 9, 10,
+    {"C4", 261.63},   {"C#4", 277.18},  {"D4", 293.66},   {"D#4", 311.13},
+    {"E4", 329.63},   {"F4", 349.23},   {"F#4", 369.99},  {"G4", 392.00},
+    {"G#4", 415.30},  {"A4", 440.00},   {"A#4", 466.16},  {"B4", 493.88},
+
+    {"C5", 523.25},   {"C#5", 554.37},  {"D5", 587.33},   {"D#5", 622.25},
+    {"E5", 659.25},   {"F5", 698.46},   {"F#5", 739.99},  {"G5", 783.99},
+    {"G#5", 830.61},  {"A5", 880.00},   {"A#5", 932.33},  {"B5", 987.77},
+
+    {"C6", 1046.50},  {"C#6", 1108.73}, {"D6", 1174.66},  {"D#6", 1244.51},
+    {"E6", 1318.51},  {"F6", 1396.91},  {"F#6", 1479.98}, {"G6", 1567.98},
+    {"G#6", 1661.22}, {"A6", 1760.00},  {"A#6", 1864.66}, {"B6", 1975.53},
 };
-size_t acrostic_i = 15;
+
+// The list of notes to convert to frequencies
+std::vector<std::string> notes = {
+    "B4", "B4", "G4", "G4", "B4", "B4", "A4",  "A4",   //
+    "E4", "E4", "C4", "C4", "G4", "A4", "F#4", "F#4",  //
+    "G4", "G4", "E4", "E4", "D4", "D4", "D4",  "D4",   //
+    "E3", "E3", "C3", "C3", "G3", "G3", "D3",  "D3",   //
+    "B4", "B4", "G5", "G5", "B4", "B4", "F#5", "F#5",  //
+    "E5", "E5", "C5", "C5", "G5", "E5", "F#5", "F#5",  //
+    "E5", "E5", "E5", "E5", "E5", "E5", "E5",  "E5",   //
+    "E5", "E5", "E5", "E5", "E5", "E5", "E5",  "E5",
+};
+size_t acrostic_i = notes.size() - 1;
 
 #define NUM_LOOPS 6
-float bpm_set = 30.0f;
+float bpm_set = 60.0f;
 size_t loop_index = 0;
 Color my_colors[5];
 Tape tape[NUM_LOOPS];
@@ -116,16 +134,16 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
     out[i + 1] = (0.5 * in[i + 1]) + audiocallback_bufout[i + 1];
   }
 
-  // apply reverb to tape
-  float outl, outr, inl, inr;
-  for (size_t i = 0; i < size; i += 2) {
-    // apply reverb
-    inl = out[i];
-    inr = out[i + 1];
-    GetReverbSample(outl, outr, inl, inr);
-    out[i] = outl;
-    out[i + 1] = outr;
-  }
+  // // apply reverb to tape
+  // float outl, outr, inl, inr;
+  // for (size_t i = 0; i < size; i += 2) {
+  //   // apply reverb
+  //   inl = out[i];
+  //   inr = out[i + 1];
+  //   GetReverbSample(outl, outr, inl, inr);
+  //   out[i] = outl;
+  //   out[i + 1] = outr;
+  // }
 
 #ifdef INCLUDE_AUDIO_PROFILING
   audiocallback_time_needed = DWT->CYCCNT;
@@ -212,6 +230,8 @@ int main(void) {
   //   }
   // }
 
+  // Mapping notes to their corresponding frequencies (in Hz)
+
   hw.SetAudioBlockSize(AUDIO_BLOCK_SIZE);
 
   // initialize
@@ -269,11 +289,12 @@ void Controls(float audio_level) {
                           tape[loop_index].buffer_end);
     }
   }
-  if (audio_level > 2 && !tape[loop_index].IsRecording()) {
-    tape[loop_index].RecordingStart();
-  } else if (audio_level < 0.01 && tape[loop_index].IsRecording()) {
-    tape[loop_index].RecordingStop();
-  }
+  // TODO CHECK IF PRIMED
+  // if (audio_level > 2 && !tape[loop_index].IsRecording()) {
+  //   tape[loop_index].RecordingStart();
+  // } else if (audio_level < 0.01 && tape[loop_index].IsRecording()) {
+  //   tape[loop_index].RecordingStop();
+  // }
   if (hw.encoder.Pressed()) {
     button_time_pressed[2] = hw.encoder.TimeHeldMs();
   }
@@ -289,13 +310,13 @@ void Controls(float audio_level) {
   if (tape[loop_index].IsPlayingOrFading()) {
     hw.led1.SetColor(my_colors[1]);
   } else {
-    hw.led1.SetColor(my_colors[loop_index + 2]);
+    hw.led1.SetColor(my_colors[(loop_index % 3) + 2]);
   }
   hw.led1.Update();
   if (tape[loop_index].IsRecording()) {
     hw.led2.SetColor(my_colors[0]);
   } else {
-    hw.led2.SetColor(my_colors[loop_index + 2]);
+    hw.led2.SetColor(my_colors[(loop_index % 3) + 2]);
   }
   hw.led2.Update();
 
@@ -325,26 +346,36 @@ void Controls(float audio_level) {
   }
 
   if (bpm_measure_quarter.Process()) {
-    acrostic_i++;
-    uint16_t val =
-        roundf(847.3722995 * log(c_major_scale[acrostic[acrostic_i % 16]]) -
-               1624.788016);
-    // daisyseed.PrintLine("DAC value: %d", val);
-    daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
-    if (acrostic_i % 4 == 0) {
+    measure_beat_count++;
+    if (measure_beat_count % 8 == 0) {
+      measure_measure_count++;
       for (size_t i = 0; i < NUM_LOOPS; i++) {
         if (tape[i].IsPlayingOrFading()) {
           tape[i].PlayingRestart();
         }
       }
-      tape[loop_index].RecordingStop();
-      loop_index++;
-      loop_index = loop_index % NUM_LOOPS;
-      tape[loop_index].RecordingStart();
-      daisyseed.PrintLine("recording measure %d on loop %d", acrostic_i % 4,
-                          loop_index);
-    } else {
-      daisyseed.PrintLine("bpm beat %d", acrostic_i % 4);
+      if (tape[loop_index].IsRecording()) {
+        tape[loop_index].RecordingStop();
+      }
+      if (measure_measure_count < 6) {
+        loop_index++;
+        loop_index = loop_index % NUM_LOOPS;
+        tape[loop_index].RecordingStart();
+        daisyseed.PrintLine("recording measure %d on loop %d (%2.1f)",
+                            measure_measure_count, loop_index,
+                            noteFrequencies[notes[acrostic_i % notes.size()]]);
+      }
+    } else if (measure_measure_count >= 0) {
+      daisyseed.PrintLine("bpm beat %d (%2.1f)", acrostic_i % 4,
+                          noteFrequencies[notes[acrostic_i % notes.size()]]);
+    }
+    if (measure_measure_count >= 0) {
+      acrostic_i++;
+      uint16_t val = roundf(
+          847.3722995 * log(noteFrequencies[notes[acrostic_i % notes.size()]]) -
+          1624.788016);
+      // daisyseed.PrintLine("DAC value: %d", val);
+      daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
     }
 
   } else if (print_timer.Process()) {

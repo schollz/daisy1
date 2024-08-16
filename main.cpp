@@ -56,7 +56,7 @@ Metro bpm_measure_quarter;  // 1 quarter note
 
 CircularBuffer tape_circular_buffer(2 * 2 * CROSSFADE_LIMIT);
 float DSY_SDRAM_BSS tape_linear_buffer[MAX_SIZE];
-float drywet = 0.0;
+float drywet = 0.5f;
 
 void Controls(float audio_level);
 void SetVoltage(float voltage) {
@@ -116,16 +116,16 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
     out[i + 1] = in[i + 1] + audiocallback_bufout[i + 1];
   }
 
-  // // apply reverb to tape
-  // float outl, outr, inl, inr;
-  // for (size_t i = 0; i < size; i += 2) {
-  //   // apply reverb
-  //   inl = out[i];
-  //   inr = out[i + 1];
-  //   GetReverbSample(outl, outr, inl, inr);
-  //   out[i] = outl;
-  //   out[i + 1] = outr;
-  // }
+  // apply reverb to tape
+  float outl, outr, inl, inr;
+  for (size_t i = 0; i < size; i += 2) {
+    // apply reverb
+    inl = out[i];
+    inr = out[i + 1];
+    GetReverbSample(outl, outr, inl, inr);
+    out[i] = outl;
+    out[i + 1] = outr;
+  }
 
 #ifdef INCLUDE_AUDIO_PROFILING
   audiocallback_time_needed = DWT->CYCCNT;
@@ -337,14 +337,12 @@ void Controls(float audio_level) {
           tape[i].PlayingRestart();
         }
       }
-      if (acrostic_i <= 32) {
-        tape[loop_index].RecordingStop();
-      }
-      if (acrostic_i < 32) {
-        daisyseed.PrintLine("recording measure %d", acrostic_i % 4);
-        loop_index++;
-        tape[loop_index].RecordingStart();
-      }
+      tape[loop_index].RecordingStop();
+      loop_index++;
+      loop_index = loop_index % NUM_LOOPS;
+      tape[loop_index].RecordingStart();
+      daisyseed.PrintLine("recording measure %d on loop %d", acrostic_i % 4,
+                          loop_index);
     } else {
       daisyseed.PrintLine("bpm beat %d", acrostic_i % 4);
     }

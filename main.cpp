@@ -1,4 +1,3 @@
-#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <map>
@@ -7,9 +6,11 @@
 #include "core_cm7.h"
 #include "daisy_pod.h"
 #include "daisysp.h"
+//
 #include "lib/lfo.h"
 #include "lib/tape.h"
 
+uint8_t DMA_BUFFER_MEM_SECTION buffer_spi[4];
 #define INCLUDE_AUDIO_PROFILING 1
 #define AUDIO_BLOCK_SIZE 128
 #define AUDIO_SAMPLE_RATE 48000
@@ -50,21 +51,62 @@ std::map<std::string, float> noteFrequencies = {
     {"G#6", 1661.22}, {"A6", 1760.00},  {"A#6", 1864.66}, {"B6", 1975.53},
 };
 
-// The list of notes to convert to frequencies
 std::vector<std::string> notes = {
-    "B4", "B4", "G4", "G4", "B4", "B4", "A4",  "A4",   //
-    "E4", "E4", "C4", "C4", "G4", "A4", "F#4", "F#4",  //
-    "G4", "G4", "E4", "E4", "D4", "D4", "D4",  "D4",   //
-    "E3", "E3", "C3", "C3", "G3", "G3", "D3",  "D3",   //
-    "B4", "B4", "G5", "G5", "B4", "B4", "F#5", "F#5",  //
-    "E5", "E5", "C5", "C5", "G5", "E5", "F#5", "F#5",  //
-    "E5", "E5", "E5", "E5", "E5", "E5", "E5",  "E5",   //
-    "E5", "E5", "E5", "E5", "E5", "E5", "E5",  "E5",
+    //
+    "B4", "B4", "B4", "B4", "B4", "B4", "B4", "B4", "G4", "G4", "G4", "G4",
+    "G4", "G4", "G4", "G4", "B4", "B4", "B4", "B4", "B4", "B4", "B4", "B4",
+    "A4", "A4", "A4", "A4", "A4", "A4", "A4", "A4",
+    //
+    "E4", "E4", "E4", "E4", "E4", "E4", "E4", "E4", "C4", "C4", "C4", "C4",
+    "C4", "C4", "C4", "C4", "G4", "G4", "A4", "A4", "G4", "G4", "A4", "A4",
+    "F#4", "F#4", "F#4", "F#4", "F#4", "F#4", "F#4", "F#4",
+    //
+    "G4", "G4", "G4", "G4", "G4", "G4", "G4", "G4", "E4", "E4", "E4", "E4",
+    "E4", "E4", "E4", "E4", "D4", "D4", "D4", "D4", "D4", "D4", "D4", "D4",
+    "D4", "D4", "D4", "D4", "D4", "D4", "D4", "D4",
+    //
+    "E3", "E3", "E3", "E3", "E3", "E3", "E3", "E3", "C3", "C3", "C3", "C3",
+    "C3", "C3", "C3", "C3", "G3", "G3", "G3", "G3", "G3", "G3", "G3", "G3",
+    "D3", "D3", "D3", "D3", "D3", "D3", "D3", "D3",
+    //
+    "B4", "B4", "B4", "B4", "B4", "B4", "B4", "B4", "G5", "G5", "G5", "G5",
+    "G5", "G5", "G5", "G5", "B4", "B4", "B4", "B4", "B4", "B4", "B4", "B4",
+    "F#5", "F#5", "F#5", "F#5", "F#5", "F#5", "F#5", "F#5",
+    //
+    "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "C5", "C5", "C5", "C5",
+    "C5", "C5", "C5", "C5", "G5", "G5", "G5", "G5", "G5", "G5", "E5", "E5",
+    "F#5", "F#5", "F#5", "F#5", "F#5", "F#5", "F#5", "F#5",
+    //
+    "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
+    "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
+    "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
+    //
+    "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
+    "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
+    "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
+    //
+    "B4", "B4", "E5", "G4", "B4", "D5", "D5", "E5", "B4", "B4", "E5", "G4",
+    "B4", "D5", "D5", "E5", "E5", "E5", "D5", "E5", "B4", "G4", "D5", "E5",
+    "E5", "E5", "D5", "E5", "B4", "G4", "D5", "E5", "D5", "C5", "E5", "B4",
+    "C5", "G4", "B4", "C5", "D5", "C5", "E5", "B4", "C5", "G4", "B4", "C5",
+    "D5", "E5", "F#5", "A4", "B4", "G4", "D5", "E5", "D5", "E5", "F#5", "A4",
+    "B4", "G4", "D5", "E5", "E5", "G4", "E5", "A4", "C5", "G4", "B4", "D5",
+    "A4", "G4", "D5", "G4", "D5", "C5", "G4", "B4", "D5", "A4", "C5", "G4",
+    "D5", "D5", "D5", "E5", "E5", "B4", "B4", "D5", "F#5", "E5", "D5", "G4",
+    "F#5", "E5", "B4", "E5", "E5", "B4", "E5", "E5", "G4", "D5", "G4", "G4",
+    "E5", "A4", "E5", "B4", "D5", "C5", "E5", "B4", "D5", "D5", "D5", "D5",
+    "E5", "D5", "E5", "B4", "E5", "E5", "B4", "E5", "C5", "G4", "D5", "B4",
+    "D5", "B4", "B4", "B4", "E5", "B4", "F#5", "B4", "E5", "E5", "E5", "C5",
+    "A4", "B4", "E5", "D5", "E5", "E5", "B4", "C5", "C5", "A4", "F#5", "E5",
+    "B4", "G4", "B4", "B4", "E5", "C5", "E5", "B4", "F#5", "D5", "C5", "E5",
+    "E5", "D5", "G4", "E5", "D5", "D5", "D5", "D5", "E5", "C5", "E5", "D5",
+    "G4", "F#5", "C5", "D5", "B4", "B4", "E5", "D5", "G4", "E5", "E5", "G4"
+
 };
 size_t acrostic_i = notes.size() - 1;
 
 #define NUM_LOOPS 6
-float bpm_set = 60.0f;
+float bpm_set = 360.0f;
 size_t loop_index = 0;
 Color my_colors[5];
 Tape tape[NUM_LOOPS];
@@ -152,6 +194,52 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
 
 int main(void) {
   hw.Init();
+  daisyseed.StartLog(false);
+
+  // Handle we'll use to interact with SPI
+  SpiHandle spi_handle;
+
+  // Structure to configure the SPI handle
+  SpiHandle::Config spi_conf;
+
+  spi_conf.mode = SpiHandle::Config::Mode::MASTER;  // we're in charge
+
+  spi_conf.periph =
+      SpiHandle::Config::Peripheral::SPI_1;  // Use the SPI_1 Peripheral
+
+  // Pins to use. These must be available on the selected peripheral
+  spi_conf.pin_config.sclk = seed::D8;
+  spi_conf.pin_config.miso = seed::D9;
+  spi_conf.pin_config.mosi = seed::D10;
+  spi_conf.pin_config.nss = seed::D7;
+
+  // define speed
+  // 25 MHz / 2 = 12.5 MHz
+  spi_conf.baud_prescaler = SpiHandle::Config::BaudPrescaler::PS_2;
+
+  // data will flow in both directions
+  spi_conf.direction = SpiHandle::Config::Direction::TWO_LINES;
+
+  // // The master will output on the NSS line
+  spi_conf.nss = SpiHandle::Config::NSS::HARD_OUTPUT;
+
+  // spi_conf.clock_polarity = SpiHandle::Config::ClockPolarity::HIGH;
+  // spi_conf.clock_phase = SpiHandle::Config::ClockPhase::ONE_EDGE;
+
+  // Initialize the SPI Handle
+  spi_handle.Init(spi_conf);
+
+  // loop forever
+  while (1) {
+    // put these four bytes in a buffer
+    buffer_spi[0] = 0x01;
+    buffer_spi[1] = 0x02;
+    buffer_spi[2] = 0x03;
+    buffer_spi[3] = 0x04;
+    spi_handle.BlockingTransmit(buffer_spi, 4);
+    // wait 500 ms
+    System::Delay(500);
+  }
 
 #ifdef INCLUDE_AUDIO_PROFILING
   // setup measurement
@@ -192,7 +280,6 @@ int main(void) {
   bpm_measure.Init(bpm_set / 60.0f / 10, AUDIO_SAMPLE_RATE / AUDIO_BLOCK_SIZE);
   bpm_measure_quarter.Init(bpm_set / 60.0,
                            AUDIO_SAMPLE_RATE / AUDIO_BLOCK_SIZE);
-  daisyseed.StartLog(true);
 
   // intialize tapes
   daisyseed.PrintLine("time per loop: %2.1f seconds",
@@ -231,6 +318,8 @@ int main(void) {
   // }
 
   // Mapping notes to their corresponding frequencies (in Hz)
+
+  System::Delay(2000);
 
   hw.SetAudioBlockSize(AUDIO_BLOCK_SIZE);
 
@@ -347,7 +436,7 @@ void Controls(float audio_level) {
 
   if (bpm_measure_quarter.Process()) {
     measure_beat_count++;
-    if (measure_beat_count % 8 == 0) {
+    if (measure_beat_count % 32 == 0) {
       measure_measure_count++;
       for (size_t i = 0; i < NUM_LOOPS; i++) {
         if (tape[i].IsPlayingOrFading()) {

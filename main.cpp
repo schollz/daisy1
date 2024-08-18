@@ -27,6 +27,7 @@ using namespace daisysp;
 DaisyPod hw;
 DaisySeed daisyseed;
 LFO lfotest;
+float reverb_wet_dry = 0;
 static ReverbSc rev;
 int8_t measure_measure_count = -1;
 int8_t measure_beat_count = -1;
@@ -170,8 +171,9 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
   ProcessReverb(AUDIO_BLOCK_SIZE, inl, inr, outl, outr);
   // re-interleave
   for (size_t i = 0; i < size; i += 2) {
-    out[i] = 0.7 * out[i] + 0.3 * outl[i / 2];
-    out[i + 1] = 0.7 * out[i + 1] + 0.3 * outr[i / 2];
+    out[i] = (1 - reverb_wet_dry) * out[i] + reverb_wet_dry * outl[i / 2];
+    out[i + 1] =
+        (1 - reverb_wet_dry) * out[i + 1] + reverb_wet_dry * outr[i / 2];
   }
 
   // // apply reverb to tape
@@ -427,6 +429,7 @@ void Controls(float audio_level) {
   knobs_current[1] = roundf(hw.knob2.Process() * 500) / 500;
   if (knobs_current[1] != knobs_last[1]) {
     knobs_last[1] = knobs_current[1];
+    reverb_wet_dry = hw.knob2.Process() / 2;
     if (tape[loop_index].IsPlayingOrFading()) {
       // daisyseed.PrintLine("setting rate to %2.1f", new_rate);
       // tape[loop_index].SetRate(hw.knob2.Process() * 2);
@@ -435,45 +438,45 @@ void Controls(float audio_level) {
   }
 
   if (bpm_measure_quarter.Process()) {
-    measure_beat_count++;
-    if (measure_beat_count % 32 == 0) {
-      measure_measure_count++;
-      for (size_t i = 0; i < NUM_LOOPS; i++) {
-        if (tape[i].IsPlayingOrFading()) {
-          tape[i].PlayingRestart();
-        }
-      }
-      if (tape[loop_index].IsRecording()) {
-        tape[loop_index].RecordingStop();
-      }
-      if (measure_measure_count < 6) {
-        loop_index++;
-        loop_index = loop_index % NUM_LOOPS;
-        tape[loop_index].RecordingStart();
-        daisyseed.PrintLine(
-            "recording measure %d on loop %d (%2.1f)", measure_measure_count,
-            loop_index,
-            noteNumberToFrequency(notes[acrostic_i % notes.size()]));
-      }
-    } else if (measure_measure_count >= 0) {
-      // daisyseed.PrintLine(
-      //     "bpm beat %d (%2.1f)", acrostic_i % 4,
-      //     noteNumberToFrequency(notes[acrostic_i % notes.size()]));
-    }
-    if (measure_measure_count >= 0) {
-      acrostic_i++;
-      uint16_t val = roundf(
-          847.3722995 *
-              log(noteNumberToFrequency(notes[acrostic_i % notes.size()])) -
-          1624.788016);
-      if (measure_beat_count % 32 != 0) {
-        daisyseed.PrintLine(
-            "DAC value: %d (%3.2f) %d", val,
-            noteNumberToFrequency(notes[acrostic_i % notes.size()]),
-            notes[acrostic_i % notes.size()]);
-      }
-      daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
-    }
+    // measure_beat_count++;
+    // if (measure_beat_count % 32 == 0) {
+    //   measure_measure_count++;
+    //   for (size_t i = 0; i < NUM_LOOPS; i++) {
+    //     if (tape[i].IsPlayingOrFading()) {
+    //       tape[i].PlayingRestart();
+    //     }
+    //   }
+    //   if (tape[loop_index].IsRecording()) {
+    //     tape[loop_index].RecordingStop();
+    //   }
+    //   if (measure_measure_count < 6) {
+    //     loop_index++;
+    //     loop_index = loop_index % NUM_LOOPS;
+    //     tape[loop_index].RecordingStart();
+    //     daisyseed.PrintLine(
+    //         "recording measure %d on loop %d (%2.1f)", measure_measure_count,
+    //         loop_index,
+    //         noteNumberToFrequency(notes[acrostic_i % notes.size()]));
+    //   }
+    // } else if (measure_measure_count >= 0) {
+    //   // daisyseed.PrintLine(
+    //   //     "bpm beat %d (%2.1f)", acrostic_i % 4,
+    //   //     noteNumberToFrequency(notes[acrostic_i % notes.size()]));
+    // }
+    // if (measure_measure_count >= 0) {
+    //   acrostic_i++;
+    //   uint16_t val = roundf(
+    //       847.3722995 *
+    //           log(noteNumberToFrequency(notes[acrostic_i % notes.size()])) -
+    //       1624.788016);
+    //   if (measure_beat_count % 32 != 0) {
+    //     daisyseed.PrintLine(
+    //         "DAC value: %d (%3.2f) %d", val,
+    //         noteNumberToFrequency(notes[acrostic_i % notes.size()]),
+    //         notes[acrostic_i % notes.size()]);
+    //   }
+    //   daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
+    // }
 
   } else if (print_timer.Process()) {
     uint32_t currentTime = System::GetNow();

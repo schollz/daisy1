@@ -220,13 +220,13 @@ void instanceResetUserInterface() {
   //   fHslider10 = FAUSTFLOAT(0.5f);
 
   fHslider0 = FAUSTFLOAT(5.5e+03f);
-  fHslider1 = FAUSTFLOAT(7e+01f);
+  fHslider1 = FAUSTFLOAT(70.0f);
   fHslider2 = FAUSTFLOAT(62.5f);
   fHslider3 = FAUSTFLOAT(75.0f);
   fHslider4 = FAUSTFLOAT(1e+02f);
   fHslider5 = FAUSTFLOAT(1e+04f);
   fHslider6 = FAUSTFLOAT(1e+02f);
-  fHslider7 = FAUSTFLOAT(0.3f);
+  fHslider7 = FAUSTFLOAT(50.0f);
   fHslider8 = FAUSTFLOAT(70.0f);
   fHslider9 = FAUSTFLOAT(0.7f);
   fHslider10 = FAUSTFLOAT(0.5f);

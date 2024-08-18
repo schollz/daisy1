@@ -1,12 +1,13 @@
 #include <cstdio>
 #include <cstring>
-#include <map>
+// #include <map>
 #include <vector>
 
 #include "core_cm7.h"
 #include "daisy_pod.h"
 #include "daisysp.h"
 //
+#include "lib/fverb2.h"
 #include "lib/lfo.h"
 #include "lib/tape.h"
 
@@ -14,7 +15,7 @@ uint8_t DMA_BUFFER_MEM_SECTION buffer_spi[4];
 #define INCLUDE_AUDIO_PROFILING 1
 #define AUDIO_BLOCK_SIZE 128
 #define AUDIO_SAMPLE_RATE 48000
-#define MAX_SECONDS 170
+#define MAX_SECONDS 160
 #define MAX_SIZE                     \
   (AUDIO_SAMPLE_RATE * MAX_SECONDS * \
    2)  // 170 seconds of stereo floats at 48 khz
@@ -29,81 +30,81 @@ LFO lfotest;
 static ReverbSc rev;
 int8_t measure_measure_count = -1;
 int8_t measure_beat_count = -1;
-std::map<std::string, float> noteFrequencies = {
-    {"C2", 65.41},    {"C#2", 69.30},   {"D2", 73.42},    {"D#2", 77.78},
-    {"E2", 82.41},    {"F2", 87.31},    {"F#2", 92.50},   {"G2", 98.00},
-    {"G#2", 103.83},  {"A2", 110.00},   {"A#2", 116.54},  {"B2", 123.47},
+// std::map<std::string, float> noteFrequencies = {
+//     {"C2", 65.41},    {"C#2", 69.30},   {"D2", 73.42},    {"D#2", 77.78},
+//     {"E2", 82.41},    {"F2", 87.31},    {"F#2", 92.50},   {"G2", 98.00},
+//     {"G#2", 103.83},  {"A2", 110.00},   {"A#2", 116.54},  {"B2", 123.47},
 
-    {"C3", 130.81},   {"C#3", 138.59},  {"D3", 146.83},   {"D#3", 155.56},
-    {"E3", 164.81},   {"F3", 174.61},   {"F#3", 185.00},  {"G3", 196.00},
-    {"G#3", 207.65},  {"A3", 220.00},   {"A#3", 233.08},  {"B3", 246.94},
+//     {"C3", 130.81},   {"C#3", 138.59},  {"D3", 146.83},   {"D#3", 155.56},
+//     {"E3", 164.81},   {"F3", 174.61},   {"F#3", 185.00},  {"G3", 196.00},
+//     {"G#3", 207.65},  {"A3", 220.00},   {"A#3", 233.08},  {"B3", 246.94},
 
-    {"C4", 261.63},   {"C#4", 277.18},  {"D4", 293.66},   {"D#4", 311.13},
-    {"E4", 329.63},   {"F4", 349.23},   {"F#4", 369.99},  {"G4", 392.00},
-    {"G#4", 415.30},  {"A4", 440.00},   {"A#4", 466.16},  {"B4", 493.88},
+//     {"C4", 261.63},   {"C#4", 277.18},  {"D4", 293.66},   {"D#4", 311.13},
+//     {"E4", 329.63},   {"F4", 349.23},   {"F#4", 369.99},  {"G4", 392.00},
+//     {"G#4", 415.30},  {"A4", 440.00},   {"A#4", 466.16},  {"B4", 493.88},
 
-    {"C5", 523.25},   {"C#5", 554.37},  {"D5", 587.33},   {"D#5", 622.25},
-    {"E5", 659.25},   {"F5", 698.46},   {"F#5", 739.99},  {"G5", 783.99},
-    {"G#5", 830.61},  {"A5", 880.00},   {"A#5", 932.33},  {"B5", 987.77},
+//     {"C5", 523.25},   {"C#5", 554.37},  {"D5", 587.33},   {"D#5", 622.25},
+//     {"E5", 659.25},   {"F5", 698.46},   {"F#5", 739.99},  {"G5", 783.99},
+//     {"G#5", 830.61},  {"A5", 880.00},   {"A#5", 932.33},  {"B5", 987.77},
 
-    {"C6", 1046.50},  {"C#6", 1108.73}, {"D6", 1174.66},  {"D#6", 1244.51},
-    {"E6", 1318.51},  {"F6", 1396.91},  {"F#6", 1479.98}, {"G6", 1567.98},
-    {"G#6", 1661.22}, {"A6", 1760.00},  {"A#6", 1864.66}, {"B6", 1975.53},
-};
+//     {"C6", 1046.50},  {"C#6", 1108.73}, {"D6", 1174.66},  {"D#6", 1244.51},
+//     {"E6", 1318.51},  {"F6", 1396.91},  {"F#6", 1479.98}, {"G6", 1567.98},
+//     {"G#6", 1661.22}, {"A6", 1760.00},  {"A#6", 1864.66}, {"B6", 1975.53},
+// };
 
-std::vector<std::string> notes = {
-    //
-    "B4", "B4", "B4", "B4", "B4", "B4", "B4", "B4", "G4", "G4", "G4", "G4",
-    "G4", "G4", "G4", "G4", "B4", "B4", "B4", "B4", "B4", "B4", "B4", "B4",
-    "A4", "A4", "A4", "A4", "A4", "A4", "A4", "A4",
-    //
-    "E4", "E4", "E4", "E4", "E4", "E4", "E4", "E4", "C4", "C4", "C4", "C4",
-    "C4", "C4", "C4", "C4", "G4", "G4", "A4", "A4", "G4", "G4", "A4", "A4",
-    "F#4", "F#4", "F#4", "F#4", "F#4", "F#4", "F#4", "F#4",
-    //
-    "G4", "G4", "G4", "G4", "G4", "G4", "G4", "G4", "E4", "E4", "E4", "E4",
-    "E4", "E4", "E4", "E4", "D4", "D4", "D4", "D4", "D4", "D4", "D4", "D4",
-    "D4", "D4", "D4", "D4", "D4", "D4", "D4", "D4",
-    //
-    "E3", "E3", "E3", "E3", "E3", "E3", "E3", "E3", "C3", "C3", "C3", "C3",
-    "C3", "C3", "C3", "C3", "G3", "G3", "G3", "G3", "G3", "G3", "G3", "G3",
-    "D3", "D3", "D3", "D3", "D3", "D3", "D3", "D3",
-    //
-    "B4", "B4", "B4", "B4", "B4", "B4", "B4", "B4", "G5", "G5", "G5", "G5",
-    "G5", "G5", "G5", "G5", "B4", "B4", "B4", "B4", "B4", "B4", "B4", "B4",
-    "F#5", "F#5", "F#5", "F#5", "F#5", "F#5", "F#5", "F#5",
-    //
-    "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "C5", "C5", "C5", "C5",
-    "C5", "C5", "C5", "C5", "G5", "G5", "G5", "G5", "G5", "G5", "E5", "E5",
-    "F#5", "F#5", "F#5", "F#5", "F#5", "F#5", "F#5", "F#5",
-    //
-    "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
-    "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
-    "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
-    //
-    "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
-    "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
-    "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
-    //
-    "B4", "B4", "E5", "G4", "B4", "D5", "D5", "E5", "B4", "B4", "E5", "G4",
-    "B4", "D5", "D5", "E5", "E5", "E5", "D5", "E5", "B4", "G4", "D5", "E5",
-    "E5", "E5", "D5", "E5", "B4", "G4", "D5", "E5", "D5", "C5", "E5", "B4",
-    "C5", "G4", "B4", "C5", "D5", "C5", "E5", "B4", "C5", "G4", "B4", "C5",
-    "D5", "E5", "F#5", "A4", "B4", "G4", "D5", "E5", "D5", "E5", "F#5", "A4",
-    "B4", "G4", "D5", "E5", "E5", "G4", "E5", "A4", "C5", "G4", "B4", "D5",
-    "A4", "G4", "D5", "G4", "D5", "C5", "G4", "B4", "D5", "A4", "C5", "G4",
-    "D5", "D5", "D5", "E5", "E5", "B4", "B4", "D5", "F#5", "E5", "D5", "G4",
-    "F#5", "E5", "B4", "E5", "E5", "B4", "E5", "E5", "G4", "D5", "G4", "G4",
-    "E5", "A4", "E5", "B4", "D5", "C5", "E5", "B4", "D5", "D5", "D5", "D5",
-    "E5", "D5", "E5", "B4", "E5", "E5", "B4", "E5", "C5", "G4", "D5", "B4",
-    "D5", "B4", "B4", "B4", "E5", "B4", "F#5", "B4", "E5", "E5", "E5", "C5",
-    "A4", "B4", "E5", "D5", "E5", "E5", "B4", "C5", "C5", "A4", "F#5", "E5",
-    "B4", "G4", "B4", "B4", "E5", "C5", "E5", "B4", "F#5", "D5", "C5", "E5",
-    "E5", "D5", "G4", "E5", "D5", "D5", "D5", "D5", "E5", "C5", "E5", "D5",
-    "G4", "F#5", "C5", "D5", "B4", "B4", "E5", "D5", "G4", "E5", "E5", "G4"
+// std::vector<std::string> notes = {
+//     //
+//     "B4", "B4", "B4", "B4", "B4", "B4", "B4", "B4", "G4", "G4", "G4", "G4",
+//     "G4", "G4", "G4", "G4", "B4", "B4", "B4", "B4", "B4", "B4", "B4", "B4",
+//     "A4", "A4", "A4", "A4", "A4", "A4", "A4", "A4",
+//     //
+//     "E4", "E4", "E4", "E4", "E4", "E4", "E4", "E4", "C4", "C4", "C4", "C4",
+//     "C4", "C4", "C4", "C4", "G4", "G4", "A4", "A4", "G4", "G4", "A4", "A4",
+//     "F#4", "F#4", "F#4", "F#4", "F#4", "F#4", "F#4", "F#4",
+//     //
+//     "G4", "G4", "G4", "G4", "G4", "G4", "G4", "G4", "E4", "E4", "E4", "E4",
+//     "E4", "E4", "E4", "E4", "D4", "D4", "D4", "D4", "D4", "D4", "D4", "D4",
+//     "D4", "D4", "D4", "D4", "D4", "D4", "D4", "D4",
+//     //
+//     "E3", "E3", "E3", "E3", "E3", "E3", "E3", "E3", "C3", "C3", "C3", "C3",
+//     "C3", "C3", "C3", "C3", "G3", "G3", "G3", "G3", "G3", "G3", "G3", "G3",
+//     "D3", "D3", "D3", "D3", "D3", "D3", "D3", "D3",
+//     //
+//     "B4", "B4", "B4", "B4", "B4", "B4", "B4", "B4", "G5", "G5", "G5", "G5",
+//     "G5", "G5", "G5", "G5", "B4", "B4", "B4", "B4", "B4", "B4", "B4", "B4",
+//     "F#5", "F#5", "F#5", "F#5", "F#5", "F#5", "F#5", "F#5",
+//     //
+//     "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "C5", "C5", "C5", "C5",
+//     "C5", "C5", "C5", "C5", "G5", "G5", "G5", "G5", "G5", "G5", "E5", "E5",
+//     "F#5", "F#5", "F#5", "F#5", "F#5", "F#5", "F#5", "F#5",
+//     //
+//     "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
+//     "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
+//     "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
+//     //
+//     "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
+//     "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
+//     "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
+//     //
+//     "B4", "B4", "E5", "G4", "B4", "D5", "D5", "E5", "B4", "B4", "E5", "G4",
+//     "B4", "D5", "D5", "E5", "E5", "E5", "D5", "E5", "B4", "G4", "D5", "E5",
+//     "E5", "E5", "D5", "E5", "B4", "G4", "D5", "E5", "D5", "C5", "E5", "B4",
+//     "C5", "G4", "B4", "C5", "D5", "C5", "E5", "B4", "C5", "G4", "B4", "C5",
+//     "D5", "E5", "F#5", "A4", "B4", "G4", "D5", "E5", "D5", "E5", "F#5", "A4",
+//     "B4", "G4", "D5", "E5", "E5", "G4", "E5", "A4", "C5", "G4", "B4", "D5",
+//     "A4", "G4", "D5", "G4", "D5", "C5", "G4", "B4", "D5", "A4", "C5", "G4",
+//     "D5", "D5", "D5", "E5", "E5", "B4", "B4", "D5", "F#5", "E5", "D5", "G4",
+//     "F#5", "E5", "B4", "E5", "E5", "B4", "E5", "E5", "G4", "D5", "G4", "G4",
+//     "E5", "A4", "E5", "B4", "D5", "C5", "E5", "B4", "D5", "D5", "D5", "D5",
+//     "E5", "D5", "E5", "B4", "E5", "E5", "B4", "E5", "C5", "G4", "D5", "B4",
+//     "D5", "B4", "B4", "B4", "E5", "B4", "F#5", "B4", "E5", "E5", "E5", "C5",
+//     "A4", "B4", "E5", "D5", "E5", "E5", "B4", "C5", "C5", "A4", "F#5", "E5",
+//     "B4", "G4", "B4", "B4", "E5", "C5", "E5", "B4", "F#5", "D5", "C5", "E5",
+//     "E5", "D5", "G4", "E5", "D5", "D5", "D5", "D5", "E5", "C5", "E5", "D5",
+//     "G4", "F#5", "C5", "D5", "B4", "B4", "E5", "D5", "G4", "E5", "E5", "G4"
 
-};
-size_t acrostic_i = notes.size() - 1;
+// };
+// size_t acrostic_i = notes.size() - 1;
 
 #define NUM_LOOPS 6
 float bpm_set = 360.0f;
@@ -176,6 +177,24 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
     out[i + 1] = (0.5 * in[i + 1]) + audiocallback_bufout[i + 1];
   }
 
+  // de-interleave
+  float inl[AUDIO_BLOCK_SIZE];
+  float inr[AUDIO_BLOCK_SIZE];
+  float outl[AUDIO_BLOCK_SIZE];
+  float outr[AUDIO_BLOCK_SIZE];
+  for (size_t i = 0; i < size; i += 2) {
+    inl[i / 2] = in[i];
+    inr[i / 2] = in[i + 1];
+    outl[i / 2] = out[i];
+    outr[i / 2] = out[i + 1];
+  }
+  ProcessReverb(AUDIO_BLOCK_SIZE, inl, inr, outl, outr);
+  // re-interleave
+  for (size_t i = 0; i < size; i += 2) {
+    out[i] = 0.3 * out[i] + 0.7 * outl[i / 2];
+    out[i + 1] = 0.3 * out[i + 1] + 0.7 * outr[i / 2];
+  }
+
   // // apply reverb to tape
   // float outl, outr, inl, inr;
   // for (size_t i = 0; i < size; i += 2) {
@@ -196,50 +215,52 @@ int main(void) {
   hw.Init();
   daisyseed.StartLog(false);
 
-  // Handle we'll use to interact with SPI
-  SpiHandle spi_handle;
+  initializeReverb();
 
-  // Structure to configure the SPI handle
-  SpiHandle::Config spi_conf;
+  // // Handle we'll use to interact with SPI
+  // SpiHandle spi_handle;
 
-  spi_conf.mode = SpiHandle::Config::Mode::MASTER;  // we're in charge
+  // // Structure to configure the SPI handle
+  // SpiHandle::Config spi_conf;
 
-  spi_conf.periph =
-      SpiHandle::Config::Peripheral::SPI_1;  // Use the SPI_1 Peripheral
+  // spi_conf.mode = SpiHandle::Config::Mode::MASTER;  // we're in charge
 
-  // Pins to use. These must be available on the selected peripheral
-  spi_conf.pin_config.sclk = seed::D8;
-  spi_conf.pin_config.miso = seed::D9;
-  spi_conf.pin_config.mosi = seed::D10;
-  spi_conf.pin_config.nss = seed::D7;
+  // spi_conf.periph =
+  //     SpiHandle::Config::Peripheral::SPI_1;  // Use the SPI_1 Peripheral
 
-  // define speed
-  // 25 MHz / 2 = 12.5 MHz
-  spi_conf.baud_prescaler = SpiHandle::Config::BaudPrescaler::PS_2;
+  // // Pins to use. These must be available on the selected peripheral
+  // spi_conf.pin_config.sclk = seed::D8;
+  // spi_conf.pin_config.miso = seed::D9;
+  // spi_conf.pin_config.mosi = seed::D10;
+  // spi_conf.pin_config.nss = seed::D7;
 
-  // data will flow in both directions
-  spi_conf.direction = SpiHandle::Config::Direction::TWO_LINES;
+  // // define speed
+  // // 25 MHz / 2 = 12.5 MHz
+  // spi_conf.baud_prescaler = SpiHandle::Config::BaudPrescaler::PS_2;
 
-  // // The master will output on the NSS line
-  spi_conf.nss = SpiHandle::Config::NSS::HARD_OUTPUT;
+  // // data will flow in both directions
+  // spi_conf.direction = SpiHandle::Config::Direction::TWO_LINES;
 
-  // spi_conf.clock_polarity = SpiHandle::Config::ClockPolarity::HIGH;
-  // spi_conf.clock_phase = SpiHandle::Config::ClockPhase::ONE_EDGE;
+  // // // The master will output on the NSS line
+  // spi_conf.nss = SpiHandle::Config::NSS::HARD_OUTPUT;
 
-  // Initialize the SPI Handle
-  spi_handle.Init(spi_conf);
+  // // spi_conf.clock_polarity = SpiHandle::Config::ClockPolarity::HIGH;
+  // // spi_conf.clock_phase = SpiHandle::Config::ClockPhase::ONE_EDGE;
 
-  // loop forever
-  while (1) {
-    // put these four bytes in a buffer
-    buffer_spi[0] = 0x01;
-    buffer_spi[1] = 0x02;
-    buffer_spi[2] = 0x03;
-    buffer_spi[3] = 0x04;
-    spi_handle.BlockingTransmit(buffer_spi, 4);
-    // wait 500 ms
-    System::Delay(500);
-  }
+  // // Initialize the SPI Handle
+  // spi_handle.Init(spi_conf);
+
+  // // loop forever
+  // while (1) {
+  //   // put these four bytes in a buffer
+  //   buffer_spi[0] = 0x01;
+  //   buffer_spi[1] = 0x02;
+  //   buffer_spi[2] = 0x03;
+  //   buffer_spi[3] = 0x04;
+  //   spi_handle.BlockingTransmit(buffer_spi, 4);
+  //   // wait 500 ms
+  //   System::Delay(500);
+  // }
 
 #ifdef INCLUDE_AUDIO_PROFILING
   // setup measurement
@@ -435,37 +456,38 @@ void Controls(float audio_level) {
   }
 
   if (bpm_measure_quarter.Process()) {
-    measure_beat_count++;
-    if (measure_beat_count % 32 == 0) {
-      measure_measure_count++;
-      for (size_t i = 0; i < NUM_LOOPS; i++) {
-        if (tape[i].IsPlayingOrFading()) {
-          tape[i].PlayingRestart();
-        }
-      }
-      if (tape[loop_index].IsRecording()) {
-        tape[loop_index].RecordingStop();
-      }
-      if (measure_measure_count < 6) {
-        loop_index++;
-        loop_index = loop_index % NUM_LOOPS;
-        tape[loop_index].RecordingStart();
-        daisyseed.PrintLine("recording measure %d on loop %d (%2.1f)",
-                            measure_measure_count, loop_index,
-                            noteFrequencies[notes[acrostic_i % notes.size()]]);
-      }
-    } else if (measure_measure_count >= 0) {
-      daisyseed.PrintLine("bpm beat %d (%2.1f)", acrostic_i % 4,
-                          noteFrequencies[notes[acrostic_i % notes.size()]]);
-    }
-    if (measure_measure_count >= 0) {
-      acrostic_i++;
-      uint16_t val = roundf(
-          847.3722995 * log(noteFrequencies[notes[acrostic_i % notes.size()]]) -
-          1624.788016);
-      // daisyseed.PrintLine("DAC value: %d", val);
-      daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
-    }
+    // measure_beat_count++;
+    // if (measure_beat_count % 32 == 0) {
+    //   measure_measure_count++;
+    //   for (size_t i = 0; i < NUM_LOOPS; i++) {
+    //     if (tape[i].IsPlayingOrFading()) {
+    //       tape[i].PlayingRestart();
+    //     }
+    //   }
+    //   if (tape[loop_index].IsRecording()) {
+    //     tape[loop_index].RecordingStop();
+    //   }
+    //   if (measure_measure_count < 6) {
+    //     loop_index++;
+    //     loop_index = loop_index % NUM_LOOPS;
+    //     tape[loop_index].RecordingStart();
+    //     daisyseed.PrintLine("recording measure %d on loop %d (%2.1f)",
+    //                         measure_measure_count, loop_index,
+    //                         noteFrequencies[notes[acrostic_i %
+    //                         notes.size()]]);
+    //   }
+    // } else if (measure_measure_count >= 0) {
+    //   daisyseed.PrintLine("bpm beat %d (%2.1f)", acrostic_i % 4,
+    //                       noteFrequencies[notes[acrostic_i % notes.size()]]);
+    // }
+    // if (measure_measure_count >= 0) {
+    //   acrostic_i++;
+    //   uint16_t val = roundf(
+    //       847.3722995 * log(noteFrequencies[notes[acrostic_i %
+    //       notes.size()]]) - 1624.788016);
+    //   // daisyseed.PrintLine("DAC value: %d", val);
+    //   daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
+    // }
 
   } else if (print_timer.Process()) {
     uint32_t currentTime = System::GetNow();

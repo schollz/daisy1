@@ -52,59 +52,38 @@ int8_t measure_beat_count = -1;
 //     {"G#6", 1661.22}, {"A6", 1760.00},  {"A#6", 1864.66}, {"B6", 1975.53},
 // };
 
-// std::vector<std::string> notes = {
-//     //
-//     "B4", "B4", "B4", "B4", "B4", "B4", "B4", "B4", "G4", "G4", "G4", "G4",
-//     "G4", "G4", "G4", "G4", "B4", "B4", "B4", "B4", "B4", "B4", "B4", "B4",
-//     "A4", "A4", "A4", "A4", "A4", "A4", "A4", "A4",
-//     //
-//     "E4", "E4", "E4", "E4", "E4", "E4", "E4", "E4", "C4", "C4", "C4", "C4",
-//     "C4", "C4", "C4", "C4", "G4", "G4", "A4", "A4", "G4", "G4", "A4", "A4",
-//     "F#4", "F#4", "F#4", "F#4", "F#4", "F#4", "F#4", "F#4",
-//     //
-//     "G4", "G4", "G4", "G4", "G4", "G4", "G4", "G4", "E4", "E4", "E4", "E4",
-//     "E4", "E4", "E4", "E4", "D4", "D4", "D4", "D4", "D4", "D4", "D4", "D4",
-//     "D4", "D4", "D4", "D4", "D4", "D4", "D4", "D4",
-//     //
-//     "E3", "E3", "E3", "E3", "E3", "E3", "E3", "E3", "C3", "C3", "C3", "C3",
-//     "C3", "C3", "C3", "C3", "G3", "G3", "G3", "G3", "G3", "G3", "G3", "G3",
-//     "D3", "D3", "D3", "D3", "D3", "D3", "D3", "D3",
-//     //
-//     "B4", "B4", "B4", "B4", "B4", "B4", "B4", "B4", "G5", "G5", "G5", "G5",
-//     "G5", "G5", "G5", "G5", "B4", "B4", "B4", "B4", "B4", "B4", "B4", "B4",
-//     "F#5", "F#5", "F#5", "F#5", "F#5", "F#5", "F#5", "F#5",
-//     //
-//     "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "C5", "C5", "C5", "C5",
-//     "C5", "C5", "C5", "C5", "G5", "G5", "G5", "G5", "G5", "G5", "E5", "E5",
-//     "F#5", "F#5", "F#5", "F#5", "F#5", "F#5", "F#5", "F#5",
-//     //
-//     "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
-//     "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
-//     "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
-//     //
-//     "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
-//     "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
-//     "E5", "E5", "E5", "E5", "E5", "E5", "E5", "E5",
-//     //
-//     "B4", "B4", "E5", "G4", "B4", "D5", "D5", "E5", "B4", "B4", "E5", "G4",
-//     "B4", "D5", "D5", "E5", "E5", "E5", "D5", "E5", "B4", "G4", "D5", "E5",
-//     "E5", "E5", "D5", "E5", "B4", "G4", "D5", "E5", "D5", "C5", "E5", "B4",
-//     "C5", "G4", "B4", "C5", "D5", "C5", "E5", "B4", "C5", "G4", "B4", "C5",
-//     "D5", "E5", "F#5", "A4", "B4", "G4", "D5", "E5", "D5", "E5", "F#5", "A4",
-//     "B4", "G4", "D5", "E5", "E5", "G4", "E5", "A4", "C5", "G4", "B4", "D5",
-//     "A4", "G4", "D5", "G4", "D5", "C5", "G4", "B4", "D5", "A4", "C5", "G4",
-//     "D5", "D5", "D5", "E5", "E5", "B4", "B4", "D5", "F#5", "E5", "D5", "G4",
-//     "F#5", "E5", "B4", "E5", "E5", "B4", "E5", "E5", "G4", "D5", "G4", "G4",
-//     "E5", "A4", "E5", "B4", "D5", "C5", "E5", "B4", "D5", "D5", "D5", "D5",
-//     "E5", "D5", "E5", "B4", "E5", "E5", "B4", "E5", "C5", "G4", "D5", "B4",
-//     "D5", "B4", "B4", "B4", "E5", "B4", "F#5", "B4", "E5", "E5", "E5", "C5",
-//     "A4", "B4", "E5", "D5", "E5", "E5", "B4", "C5", "C5", "A4", "F#5", "E5",
-//     "B4", "G4", "B4", "B4", "E5", "C5", "E5", "B4", "F#5", "D5", "C5", "E5",
-//     "E5", "D5", "G4", "E5", "D5", "D5", "D5", "D5", "E5", "C5", "E5", "D5",
-//     "G4", "F#5", "C5", "D5", "B4", "B4", "E5", "D5", "G4", "E5", "E5", "G4"
+std::vector<std::uint8_t> notes = {
+    71, 71, 71, 71, 71, 71, 71, 71, 67, 67, 67, 67, 67, 67, 67, 67, 71, 71, 71,
+    71, 71, 71, 71, 71, 69, 69, 69, 69, 69, 69, 69, 69, 64, 64, 64, 64, 64, 64,
+    64, 64, 60, 60, 60, 60, 60, 60, 60, 60, 67, 67, 69, 69, 67, 67, 69, 69, 66,
+    66, 66, 66, 66, 66, 66, 66, 67, 67, 67, 67, 67, 67, 67, 67, 64, 64, 64, 64,
+    64, 64, 64, 64, 62, 62, 62, 62, 62, 62, 62, 62, 62, 62, 62, 62, 62, 62, 62,
+    62, 52, 52, 52, 52, 52, 52, 52, 52, 48, 48, 48, 48, 48, 48, 48, 48, 55, 55,
+    55, 55, 55, 55, 55, 55, 50, 50, 50, 50, 50, 50, 50, 50, 71, 71, 71, 71, 71,
+    71, 71, 71, 79, 79, 79, 79, 79, 79, 79, 79, 71, 71, 71, 71, 71, 71, 71, 71,
+    78, 78, 78, 78, 78, 78, 78, 78, 76, 76, 76, 76, 76, 76, 76, 76, 72, 72, 72,
+    72, 72, 72, 72, 72, 79, 79, 79, 79, 79, 79, 76, 76, 78, 78, 78, 78, 78, 78,
+    78, 78, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76,
+    76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76,
+    76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76,
+    76, 76, 76, 76, 76, 76, 76, 76, 76, 71, 71, 76, 67, 71, 74, 74, 76, 71, 71,
+    76, 67, 71, 74, 74, 76, 76, 76, 74, 76, 71, 67, 74, 76, 76, 76, 74, 76, 71,
+    67, 74, 76, 74, 72, 76, 71, 72, 67, 71, 72, 74, 72, 76, 71, 72, 67, 71, 72,
+    74, 76, 78, 69, 71, 67, 74, 76, 74, 76, 78, 69, 71, 67, 74, 76, 76, 67, 76,
+    69, 72, 67, 71, 74, 69, 67, 74, 67, 74, 72, 67, 71, 74, 69, 72, 67, 74, 74,
+    74, 76, 76, 71, 71, 74, 78, 76, 74, 67, 78, 76, 71, 76, 76, 71, 76, 76, 67,
+    74, 67, 67, 76, 69, 76, 71, 74, 72, 76, 71, 74, 74, 74, 74, 76, 74, 76, 71,
+    76, 76, 71, 76, 72, 67, 74, 71, 74, 71, 71, 71, 76, 71, 78, 71, 76, 76, 76,
+    72, 69, 71, 76, 74, 76, 76, 71, 72, 72, 69, 78, 76, 71, 67, 71, 71, 76, 72,
+    76, 71, 78, 74, 72, 76, 76, 74, 67, 76, 74, 74, 74, 74, 76, 72, 76, 74, 67,
+    78, 72, 74, 71, 71, 76, 74, 67, 76, 76, 67,
+};
 
-// };
-// size_t acrostic_i = notes.size() - 1;
+float noteNumberToFrequency(uint8_t note) {
+  return 440.0f * powf(2.0f, (((float)note) - 69) / 12.0f);
+}
+
+size_t acrostic_i = notes.size() - 1;
 
 #define NUM_LOOPS 6
 float bpm_set = 360.0f;
@@ -183,16 +162,16 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
   float outl[AUDIO_BLOCK_SIZE];
   float outr[AUDIO_BLOCK_SIZE];
   for (size_t i = 0; i < size; i += 2) {
-    inl[i / 2] = in[i];
-    inr[i / 2] = in[i + 1];
+    inl[i / 2] = out[i];
+    inr[i / 2] = out[i + 1];
     outl[i / 2] = out[i];
     outr[i / 2] = out[i + 1];
   }
   ProcessReverb(AUDIO_BLOCK_SIZE, inl, inr, outl, outr);
   // re-interleave
   for (size_t i = 0; i < size; i += 2) {
-    out[i] = 0.3 * out[i] + 0.7 * outl[i / 2];
-    out[i + 1] = 0.3 * out[i + 1] + 0.7 * outr[i / 2];
+    out[i] = 0.7 * out[i] + 0.3 * outl[i / 2];
+    out[i + 1] = 0.7 * out[i + 1] + 0.3 * outr[i / 2];
   }
 
   // // apply reverb to tape
@@ -456,38 +435,45 @@ void Controls(float audio_level) {
   }
 
   if (bpm_measure_quarter.Process()) {
-    // measure_beat_count++;
-    // if (measure_beat_count % 32 == 0) {
-    //   measure_measure_count++;
-    //   for (size_t i = 0; i < NUM_LOOPS; i++) {
-    //     if (tape[i].IsPlayingOrFading()) {
-    //       tape[i].PlayingRestart();
-    //     }
-    //   }
-    //   if (tape[loop_index].IsRecording()) {
-    //     tape[loop_index].RecordingStop();
-    //   }
-    //   if (measure_measure_count < 6) {
-    //     loop_index++;
-    //     loop_index = loop_index % NUM_LOOPS;
-    //     tape[loop_index].RecordingStart();
-    //     daisyseed.PrintLine("recording measure %d on loop %d (%2.1f)",
-    //                         measure_measure_count, loop_index,
-    //                         noteFrequencies[notes[acrostic_i %
-    //                         notes.size()]]);
-    //   }
-    // } else if (measure_measure_count >= 0) {
-    //   daisyseed.PrintLine("bpm beat %d (%2.1f)", acrostic_i % 4,
-    //                       noteFrequencies[notes[acrostic_i % notes.size()]]);
-    // }
-    // if (measure_measure_count >= 0) {
-    //   acrostic_i++;
-    //   uint16_t val = roundf(
-    //       847.3722995 * log(noteFrequencies[notes[acrostic_i %
-    //       notes.size()]]) - 1624.788016);
-    //   // daisyseed.PrintLine("DAC value: %d", val);
-    //   daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
-    // }
+    measure_beat_count++;
+    if (measure_beat_count % 32 == 0) {
+      measure_measure_count++;
+      for (size_t i = 0; i < NUM_LOOPS; i++) {
+        if (tape[i].IsPlayingOrFading()) {
+          tape[i].PlayingRestart();
+        }
+      }
+      if (tape[loop_index].IsRecording()) {
+        tape[loop_index].RecordingStop();
+      }
+      if (measure_measure_count < 6) {
+        loop_index++;
+        loop_index = loop_index % NUM_LOOPS;
+        tape[loop_index].RecordingStart();
+        daisyseed.PrintLine(
+            "recording measure %d on loop %d (%2.1f)", measure_measure_count,
+            loop_index,
+            noteNumberToFrequency(notes[acrostic_i % notes.size()]));
+      }
+    } else if (measure_measure_count >= 0) {
+      // daisyseed.PrintLine(
+      //     "bpm beat %d (%2.1f)", acrostic_i % 4,
+      //     noteNumberToFrequency(notes[acrostic_i % notes.size()]));
+    }
+    if (measure_measure_count >= 0) {
+      acrostic_i++;
+      uint16_t val = roundf(
+          847.3722995 *
+              log(noteNumberToFrequency(notes[acrostic_i % notes.size()])) -
+          1624.788016);
+      if (measure_beat_count % 32 != 0) {
+        daisyseed.PrintLine(
+            "DAC value: %d (%3.2f) %d", val,
+            noteNumberToFrequency(notes[acrostic_i % notes.size()]),
+            notes[acrostic_i % notes.size()]);
+      }
+      daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
+    }
 
   } else if (print_timer.Process()) {
     uint32_t currentTime = System::GetNow();

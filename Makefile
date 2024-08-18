@@ -12,7 +12,8 @@ CPP_SOURCES = main.cpp \
 	lib/crossfade.cpp \
 	lib/balance2.cpp \
 	lib/lfo.cpp \
-	lib/fverb2.cpp
+	lib/fverb2.cpp \
+	lib/pitchshifter2.cpp
 	
 # C_SOURCES = audio.c
 

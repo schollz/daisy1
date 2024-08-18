@@ -9,6 +9,7 @@
 //
 #include "lib/fverb2.h"
 #include "lib/lfo.h"
+#include "lib/pitchshifter2.h"
 #include "lib/tape.h"
 
 uint8_t DMA_BUFFER_MEM_SECTION buffer_spi[4];
@@ -29,6 +30,7 @@ DaisySeed daisyseed;
 LFO lfotest;
 float reverb_wet_dry = 0;
 static ReverbSc rev;
+static PitchShifter2 pitchshifter1;
 int8_t measure_measure_count = -1;
 int8_t measure_beat_count = -1;
 // std::map<std::string, float> noteFrequencies = {

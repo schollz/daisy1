@@ -92,3 +92,16 @@ while true; do; screen /dev/ttyACM0; sleep 0.5; done
 ```
 make debug
 ```
+
+
+## TODO: 
+
+```
+sndWet = DelayN.ar(sndWet, 0.03, 0.03);
+sndWet = sndWet + PitchShift.ar(sndWet, 0.13, 2,0,1,1*shimmer/2);
+sndWet = sndWet + PitchShift.ar(sndWet, 0.1, 4,0,1,0.5*shimmer/2);
+sndWet = Fverb2.ar(sndWet[0],sndWet[1],200,
+    decay:LFNoise2.kr(1/5).range(60,90),
+    tail_density:LFNoise2.kr(1/5).range(70,90),
+);
+```

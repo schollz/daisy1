@@ -1,3 +1,6 @@
+#include <iostream>
+#include <stdint.h>
+
 const int NOTES_IN_CHORD = 3;
 
 const int8_t chord_dictionary[14][NOTES_IN_CHORD] = {
@@ -136,4 +139,24 @@ void regenerateChordProgression() {
       k++;
     }
   }
+}
+
+int main() {
+  srand(time(0)); // Seed the random number generator
+
+  regenerateChordProgression();
+
+  for (int i = 0; i < NOTES_IN_CHORD; i++) {
+    // print out array
+    std::cout << chord_progression[0][i] << " " << chord_progression[1][i]
+              << " " << chord_progression[2][i] << " "
+              << chord_progression[3][i] << std::endl;
+  }
+
+  // print sequence
+  for (int i = 0; i < NOTES_IN_CHORD * CHORDS_IN_PROGRESSION; i++) {
+    std::cout << chord_note_sequence[i] << " ";
+  }
+  std::cout << std::endl;
+  return 0;
 }

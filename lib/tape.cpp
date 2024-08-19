@@ -16,10 +16,10 @@ void Tape::Init(size_t start, size_t max) {
   for (size_t i = 0; i < TAPE_LFO_COUNT; i++) {
     if (i == TAPE_LFO_PAN) {
       // generate random float between 5000 and 15000
-      float period = 5000.0f + static_cast<float>(rand() % 10000);
+      float period = 10000.0f + static_cast<float>(rand() % 10000);
       lfos[i].Init(period, -1, 1);
     } else if (i == TAPE_LFO_AMP) {
-      float period = 5000.0f + static_cast<float>(rand() % 15000);
+      float period = 10000.0f + static_cast<float>(rand() % 20000);
       lfos[i].Init(period, 0.05, 0.9);
     }
   }

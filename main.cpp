@@ -9,7 +9,7 @@
 //
 #include "lib/fverb2.h"
 #include "lib/lfo.h"
-#include "lib/pitchshifter2.h"
+#include "lib/mcp4728.h"
 #include "lib/tape.h"
 
 uint8_t DMA_BUFFER_MEM_SECTION buffer_spi[4];
@@ -28,9 +28,10 @@ using namespace daisysp;
 DaisyPod hw;
 DaisySeed daisyseed;
 LFO lfotest;
+I2CHandle i2c;
+
 float reverb_wet_dry = 0;
-static ReverbSc rev;
-static PitchShifter2 pitchshifter1;
+
 int8_t measure_measure_count = -1;
 int8_t measure_beat_count = -1;
 // std::map<std::string, float> noteFrequencies = {
@@ -85,11 +86,27 @@ std::vector<std::uint8_t> notes = {
 float noteNumberToFrequency(uint8_t note) {
   return 440.0f * powf(2.0f, (((float)note) - 69) / 12.0f);
 }
+float noteNumberToVoltage(uint8_t note) {
+  return (((float)note) - 48.0f) / 12.0f;
+}
+
+void writeNoteCV(uint8_t note) {
+  float voltage = noteNumberToVoltage(note);
+  uint16_t val = roundf(voltage / 3.235 * 4095);
+  // DAC
+  // // Prepare data to send
+  uint8_t data[2];
+  data[0] = (val >> 8) & 0x0F;  // Upper 4 bits of the 12-bit value
+  data[1] = val & 0xFF;         // Lower 8 bits of the 12-bit value
+
+  // Transmit the data
+  i2c.TransmitBlocking(0x60, data, 2, 1000);
+}
 
 size_t acrostic_i = notes.size() - 1;
 
 #define NUM_LOOPS 6
-float bpm_set = 360.0f;
+float bpm_set = 180.0f;
 size_t loop_index = 0;
 Color my_colors[5];
 Tape tape[NUM_LOOPS];
@@ -108,12 +125,6 @@ void SetVoltage(float voltage) {
   if (val > 4095) val = 4095;
   if (val < 0) val = 0;
   daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
-}
-
-void GetReverbSample(float &outl, float &outr, float inl, float inr) {
-  rev.Process(inl, inr, &outl, &outr);
-  outl = drywet * outl + (1 - drywet) * inl;
-  outr = drywet * outr + (1 - drywet) * inr;
 }
 
 size_t audiocallback_sample_num = 0;
@@ -196,7 +207,45 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
 
 int main(void) {
   hw.Init();
-  daisyseed.StartLog(false);
+  daisyseed.StartLog(true);
+
+  // initialize i2c
+
+  I2CHandle::Config i2c_conf;
+  i2c_conf.periph = I2CHandle::Config::Peripheral::I2C_1;
+  i2c_conf.speed = I2CHandle::Config::Speed::I2C_400KHZ;
+  i2c_conf.mode = I2CHandle::Config::Mode::I2C_MASTER;
+  i2c_conf.pin_config.scl = {DSY_GPIOB, 8};
+  i2c_conf.pin_config.sda = {DSY_GPIOB, 9};
+  i2c.Init(i2c_conf);
+
+  // // i2c scan
+  // daisyseed.PrintLine("MCP4728 scan start");
+  // for (uint8_t i = 1; i < 128;
+  //      i++) {  // Address 0 is usually reserved, start at 1
+  //   uint8_t data[1] = {0};
+  //   I2CHandle::Result res = i2c.TransmitBlocking(i, data, 1, 100);
+  //   if (res == I2CHandle::Result::OK) {
+  //     daisyseed.PrintLine("I2C device found at address: 0x%02X",
+  //                         i);  // Display the address in hexadecimal format
+  //   }
+  // }
+  // daisyseed.PrintLine("MCP4728 scan end");
+
+  // daisyseed.PrintLine("MCP4728 test");
+  // uint8_t i2c_address = 0x60;  // Default I2C address for MCP4725
+  // uint8_t data[2];
+
+  // uint16_t value = roundf(3.5f / 5.0f * 4096);  // 12-bit value to send to
+  // DAC
+  // // Prepare data to send
+  // data[0] = (value >> 8) & 0x0F;  // Upper 4 bits of the 12-bit value
+  // data[1] = value & 0xFF;         // Lower 8 bits of the 12-bit value
+
+  // // Transmit the data
+  // i2c.TransmitBlocking(i2c_address, data, 2, 1000);
+
+  // daisyseed.PrintLine("MCP4728 test done");
 
   initializeReverb();
 
@@ -310,27 +359,25 @@ int main(void) {
   //   System::Delay(3000);
   // }
 
+  // uint16_t val = 4095;
+  // daisyseed.PrintLine("DAC value: %d ", val);
+  // daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
+  // System::Delay(5000000);
   // for (uint8_t i = 0; i < 10; i++) {
-  //   for (uint16_t t = 0; t < 16; t++) {
+  //   for (uint16_t t = 48; t < 80; t++) {
   //     uint16_t val =
-  //         roundf(847.3722995 * log(c_major_scale[acrostic[t]]) -
-  //         1624.788016);
-  //     daisyseed.PrintLine("DAC value: %d", val);
+  //         roundf(847.3722995 * log(noteNumberToFrequency(t)) - 1624.788016);
+  //     daisyseed.PrintLine("DAC value: %d %d", t, val);
   //     daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
-  //     System::Delay(1000);
+  //     System::Delay(500);
   //   }
   // }
 
   // Mapping notes to their corresponding frequencies (in Hz)
 
-  System::Delay(2000);
+  System::Delay(200);
 
   hw.SetAudioBlockSize(AUDIO_BLOCK_SIZE);
-
-  // initialize
-  rev.Init(hw.AudioSampleRate());
-  rev.SetLpFreq(18000.0f);
-  rev.SetFeedback(0.9f);
 
   // start callback
   hw.StartAdc();
@@ -440,45 +487,50 @@ void Controls(float audio_level) {
   }
 
   if (bpm_measure_quarter.Process()) {
-    // measure_beat_count++;
-    // if (measure_beat_count % 32 == 0) {
-    //   measure_measure_count++;
-    //   for (size_t i = 0; i < NUM_LOOPS; i++) {
-    //     if (tape[i].IsPlayingOrFading()) {
-    //       tape[i].PlayingRestart();
-    //     }
-    //   }
-    //   if (tape[loop_index].IsRecording()) {
-    //     tape[loop_index].RecordingStop();
-    //   }
-    //   if (measure_measure_count < 6) {
-    //     loop_index++;
-    //     loop_index = loop_index % NUM_LOOPS;
-    //     tape[loop_index].RecordingStart();
-    //     daisyseed.PrintLine(
-    //         "recording measure %d on loop %d (%2.1f)", measure_measure_count,
-    //         loop_index,
-    //         noteNumberToFrequency(notes[acrostic_i % notes.size()]));
-    //   }
-    // } else if (measure_measure_count >= 0) {
-    //   // daisyseed.PrintLine(
-    //   //     "bpm beat %d (%2.1f)", acrostic_i % 4,
-    //   //     noteNumberToFrequency(notes[acrostic_i % notes.size()]));
-    // }
-    // if (measure_measure_count >= 0) {
-    //   acrostic_i++;
-    //   uint16_t val = roundf(
-    //       847.3722995 *
-    //           log(noteNumberToFrequency(notes[acrostic_i % notes.size()])) -
-    //       1624.788016);
-    //   if (measure_beat_count % 32 != 0) {
-    //     daisyseed.PrintLine(
-    //         "DAC value: %d (%3.2f) %d", val,
-    //         noteNumberToFrequency(notes[acrostic_i % notes.size()]),
-    //         notes[acrostic_i % notes.size()]);
-    //   }
-    //   daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
-    // }
+    measure_beat_count++;
+    if (measure_beat_count % 32 == 0) {
+      measure_measure_count++;
+      for (size_t i = 0; i < NUM_LOOPS; i++) {
+        if (tape[i].IsPlayingOrFading()) {
+          tape[i].PlayingRestart();
+        }
+      }
+      if (tape[loop_index].IsRecording()) {
+        tape[loop_index].RecordingStop();
+      }
+      if (measure_measure_count < 6) {
+        loop_index++;
+        loop_index = loop_index % NUM_LOOPS;
+        tape[loop_index].RecordingStart();
+        daisyseed.PrintLine(
+            "recording measure %d on loop %d (%2.1f)", measure_measure_count,
+            loop_index,
+            noteNumberToFrequency(notes[acrostic_i % notes.size()]));
+      }
+    } else if (measure_measure_count >= 0) {
+      // daisyseed.PrintLine(
+      //     "bpm beat %d (%2.1f)", acrostic_i % 4,
+      //     noteNumberToFrequency(notes[acrostic_i % notes.size()]));
+    }
+    if (measure_measure_count >= 0) {
+      acrostic_i++;
+      // uint16_t val = roundf(
+      //     847.3722995 *
+      //         log(noteNumberToFrequency(notes[acrostic_i % notes.size()])) -
+      //     1624.788016);
+
+      writeNoteCV(notes[acrostic_i % notes.size()]);
+      // uint16_t val = roundf(
+      //     noteNumberToVoltage(notes[acrostic_i % notes.size()]) / 3.3 *
+      //     4095);
+      // if (measure_beat_count % 32 != 0) {
+      //   daisyseed.PrintLine(
+      //       "DAC value: %d (%3.2f) %d", val,
+      //       noteNumberToFrequency(notes[acrostic_i % notes.size()]),
+      //       notes[acrostic_i % notes.size()]);
+      // }
+      // daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
+    }
 
   } else if (print_timer.Process()) {
     uint32_t currentTime = System::GetNow();

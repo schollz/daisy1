@@ -9,7 +9,6 @@ CPP_SOURCES = main.cpp \
 	lib/resampler.cpp \
 	lib/tape.cpp \
 	lib/tapehead.cpp \
-	lib/crossfade.cpp \
 	lib/balance2.cpp \
 	lib/lfo.cpp \
 	lib/fverb2.cpp 

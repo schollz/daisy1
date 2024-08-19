@@ -37,13 +37,13 @@ def run():
 """
         )
         f.write("#define CROSSFADE_LIMIT %d\n" % sample_num)
-        f.write(f"extern float crossfade_cos_out[{sample_num}];\n")
-        f.write(f"extern float crossfade_cos_in[{sample_num}];\n")
-        f.write(f"extern float crossfade_sqrt_out[{sample_num}];\n")
-        f.write(f"extern float crossfade_sqrt_in[{sample_num}];\n")
-        f.write(f"extern float crossfade_exp_out[{sample_num}];\n")
-        f.write(f"extern float crossfade_exp_in[{sample_num}];\n")
-        f.write(f"extern float crossfade_line[{sample_num}];\n")
+        f.write(f"extern float DSY_SDRAM_BSS crossfade_cos_out[{sample_num}];\n")
+        f.write(f"extern float DSY_SDRAM_BSS  crossfade_cos_in[{sample_num}];\n")
+        f.write(f"extern float DSY_SDRAM_BSS  crossfade_sqrt_out[{sample_num}];\n")
+        f.write(f"extern float DSY_SDRAM_BSS  crossfade_sqrt_in[{sample_num}];\n")
+        f.write(f"extern float DSY_SDRAM_BSS  crossfade_exp_out[{sample_num}];\n")
+        f.write(f"extern float DSY_SDRAM_BSS  crossfade_exp_in[{sample_num}];\n")
+        f.write(f"extern float DSY_SDRAM_BSS  crossfade_line[{sample_num}];\n")
         f.write(
             """
 #endif
@@ -53,48 +53,48 @@ def run():
     f = open("crossfade.cpp", "w")
     f.write('#include "crossfade.h"\n')
 
-    f.write(f"float crossfade_cos_out[{sample_num}]={{")
+    f.write(f"float DSY_SDRAM_BSS crossfade_cos_out[{sample_num}]={{")
     s = ""
     for _, v in enumerate(cos_out):
         s += f"{round(v,4)},"
     f.write(s)
     f.write("};")
-    f.write(f"float crossfade_cos_in[{sample_num}]={{")
+    f.write(f"float DSY_SDRAM_BSS crossfade_cos_in[{sample_num}]={{")
     s = ""
     for _, v in enumerate(cos_in):
         s += f"{round(v,4)},"
     f.write(s)
     f.write("};")
 
-    f.write(f"float crossfade_sqrt_out[{sample_num}]={{")
+    f.write(f"float DSY_SDRAM_BSS crossfade_sqrt_out[{sample_num}]={{")
     s = ""
     for _, v in enumerate(sqrt_out):
         s += f"{round(v,4)},"
     f.write(s)
     f.write("};")
 
-    f.write(f"float crossfade_sqrt_in[{sample_num}]={{")
+    f.write(f"float DSY_SDRAM_BSS crossfade_sqrt_in[{sample_num}]={{")
     s = ""
     for _, v in enumerate(sqrt_in):
         s += f"{round(v,4)},"
     f.write(s)
     f.write("};")
 
-    f.write(f"float crossfade_exp_out[{sample_num}]={{")
+    f.write(f"float DSY_SDRAM_BSS crossfade_exp_out[{sample_num}]={{")
     s = ""
     for _, v in enumerate(exp_out):
         s += f"{round(v,4)},"
     f.write(s)
     f.write("};")
 
-    f.write(f"float crossfade_exp_in[{sample_num}]={{")
+    f.write(f"float DSY_SDRAM_BSS crossfade_exp_in[{sample_num}]={{")
     s = ""
     for _, v in enumerate(exp_in):
         s += f"{round(v,4)},"
     f.write(s)
     f.write("};")
 
-    f.write(f"float crossfade_line[{sample_num}]={{")
+    f.write(f"float DSY_SDRAM_BSS crossfade_line[{sample_num}]={{")
     s = ""
     for _, v in enumerate(line_out):
         s += f"{round(v,4)},"

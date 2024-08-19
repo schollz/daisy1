@@ -12,11 +12,145 @@
 #include "lib/mcp4728.h"
 #include "lib/tape.h"
 
+const int NOTES_IN_CHORD = 3;
+
+const int8_t chord_dictionary[14][NOTES_IN_CHORD] = {
+    {0, 4, 7},                    // I (C major)
+    {2, 5, 9 - 12},               // ii (D minor)
+    {4, 7, 11 - 12},              // iii (E minor)
+    {5, 9, 12 - 12},              // IV (F major)
+    {7 - 12, 11 - 12, 14 - 12},   // V (G major)
+    {9 - 12, 12 - 12, 16 - 12},   // vi (A minor)
+    {11 - 12, 14 - 12, 17 - 12},  // vii° (B diminished)
+    {0, 3, 7},                    // i (C minor)
+    {2, 6, 9 - 12},               // II (D major)
+    {4, 8, 11 - 12},              // III (E major)
+    {5, 8 - 12, 12 - 12},         // iv (F minor)
+    {7 - 12, 10 - 12, 14 - 12},   // v (G minor)
+    {9 - 12, 13 - 12, 16 - 12},   // VI (A major)
+    {11 - 12, 15 - 12, 17 - 12},  // VII (B major)
+};
+
+const int CHORD_PROGRESSION_NUM = 4;
+const int CHORDS_IN_PROGRESSION = 4;
+const uint8_t chord_progress_dictionary[CHORD_PROGRESSION_NUM]
+                                       [CHORDS_IN_PROGRESSION] = {
+                                           {1, 5, 6, 4},  // I V iv IV
+                                           {1, 6, 4, 5},  // I vi IV V
+                                           {4, 1, 5, 6},  // IV I V vi
+                                           {1, 3, 6, 4},  // I iii vi IV
+};
+
+// Function to shuffle a single array
+void shuffleArray(int arr[], int size) {
+  for (int i = size - 1; i > 0; --i) {
+    int j = rand() % (i + 1);
+    int temp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = temp;
+  }
+}
+
+int diff_between_notes(int note1, int note2) {
+  int smallest_diff = (note2 > note1) ? (note2 - note1) : (note1 - note2);
+  int octaves[3] = {-12, 0, 12};
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      int diff = ((note2 + octaves[i]) > (note1 + octaves[j]))
+                     ? (note2 + octaves[i]) - (note1 + octaves[j])
+                     : (note1 + octaves[j]) - (note2 + octaves[i]);
+      if (diff < smallest_diff) {
+        smallest_diff = diff;
+      }
+    }
+  }
+  return smallest_diff;
+}
+
+int note_diff_between_notes(int note1, int note2) {
+  int smallest_diff = (note2 > note1) ? (note2 - note1) : (note1 - note2);
+  int note3 = note2;
+  int octaves[3] = {-12, 0, 12};
+  for (int i = 0; i < 3; i++) {
+    int diff = ((note2 + octaves[i]) > (note1))
+                   ? (note2 + octaves[i]) - (note1)
+                   : (note1) - (note2 + octaves[i]);
+    if (diff < smallest_diff) {
+      smallest_diff = diff;
+      note3 = note2 + octaves[i];
+    }
+  }
+  return note3;
+}
+
+int chord_progression_index = 3;  // rand() % CHORD_PROGRESSION_NUM;
+int chord_progression[CHORDS_IN_PROGRESSION][NOTES_IN_CHORD];
+int chord_note_sequence[CHORDS_IN_PROGRESSION * NOTES_IN_CHORD];
+int chord_note_octaves[3] = {72, 48, 60};
+
+void regenerateChordProgression() {
+  shuffleArray(chord_note_octaves, 3);
+
+  for (int i = 0; i < CHORDS_IN_PROGRESSION; i++) {
+    for (int j = 0; j < NOTES_IN_CHORD; j++) {
+      chord_progression[i][j] = (int)chord_dictionary
+          [chord_progress_dictionary[chord_progression_index][i] - 1][j];
+    }
+  }
+
+  int arr_best[CHORDS_IN_PROGRESSION][NOTES_IN_CHORD];
+  int score_best = -1;
+
+  for (int iterations = 0; iterations < 100; iterations++) {
+    // Shuffle each array
+    for (int i = 0; i < CHORDS_IN_PROGRESSION; i++) {
+      shuffleArray(chord_progression[i], NOTES_IN_CHORD);
+    }
+
+    int score_total = 0;
+    for (int i = 0; i < NOTES_IN_CHORD; ++i) {
+      int score =
+          diff_between_notes(chord_progression[1][i], chord_progression[0][i]);
+      score +=
+          diff_between_notes(chord_progression[2][i], chord_progression[1][i]);
+      score +=
+          diff_between_notes(chord_progression[3][i], chord_progression[2][i]);
+      score_total += score;
+    }
+    if (score_total < score_best || score_best == -1) {
+      for (int i = 0; i < NOTES_IN_CHORD; ++i) {
+        arr_best[0][i] = chord_progression[0][i];
+        arr_best[1][i] = chord_progression[1][i];
+        arr_best[2][i] = chord_progression[2][i];
+        arr_best[3][i] = chord_progression[3][i];
+
+        // modify array so each subsequent note is the closest to the
+        arr_best[1][i] =
+            note_diff_between_notes(arr_best[0][i], arr_best[1][i]) % 12;
+        arr_best[2][i] =
+            note_diff_between_notes(arr_best[1][i], arr_best[2][i]) % 12;
+        arr_best[3][i] =
+            note_diff_between_notes(arr_best[2][i], arr_best[3][i]) % 12;
+      }
+      score_best = score_total;
+    }
+  }
+  // copy arr_best to chord_progression
+  int k = 0;
+  for (int j = 0; j < NOTES_IN_CHORD; j++) {
+    for (int i = 0; i < CHORDS_IN_PROGRESSION; i++) {
+      chord_progression[i][j] = arr_best[i][j];
+      chord_note_sequence[k] = arr_best[i][j];
+      k++;
+    }
+  }
+}
+
 uint8_t DMA_BUFFER_MEM_SECTION buffer_spi[4];
 #define INCLUDE_AUDIO_PROFILING 1
 #define AUDIO_BLOCK_SIZE 128
 #define AUDIO_SAMPLE_RATE 48000
-#define MAX_SECONDS 160
+#define MAX_SECONDS 150
 #define MAX_SIZE                     \
   (AUDIO_SAMPLE_RATE * MAX_SECONDS * \
    2)  // 170 seconds of stereo floats at 48 khz
@@ -106,7 +240,7 @@ void writeNoteCV(uint8_t note) {
 size_t acrostic_i = notes.size() - 1;
 
 #define NUM_LOOPS 6
-float bpm_set = 180.0f;
+float bpm_set = 30.0f;
 size_t loop_index = 0;
 Color my_colors[5];
 Tape tape[NUM_LOOPS];
@@ -114,7 +248,8 @@ Metro print_timer;
 Metro bpm_measure;          // 4 quarer notes
 Metro bpm_measure_quarter;  // 1 quarter note
 
-CircularBuffer tape_circular_buffer(2 * 2 * CROSSFADE_LIMIT);
+CircularBuffer tape_circular_buffer(4800);
+// CircularBuffer tape_circular_buffer(2 * 2 * CROSSFADE_LIMIT);
 float DSY_SDRAM_BSS tape_linear_buffer[MAX_SIZE];
 float drywet = 0.5f;
 
@@ -208,6 +343,8 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
 int main(void) {
   hw.Init();
   daisyseed.StartLog(true);
+
+  regenerateChordProgression();
 
   // initialize i2c
 
@@ -338,7 +475,7 @@ int main(void) {
   daisyseed.PrintLine("time per loop: %2.1f seconds",
                       (float)MAX_SECONDS / NUM_LOOPS);
   for (size_t i = 0; i < NUM_LOOPS; i++) {
-    size_t seconds_start = (i * (MAX_SECONDS - 1) / NUM_LOOPS) + 1;
+    size_t seconds_start = (i * (MAX_SECONDS - 1) / NUM_LOOPS) + 4;
     size_t seconds_end = ((i + 1) * (MAX_SECONDS - 1) / NUM_LOOPS);
     tape[i].Init(AUDIO_SAMPLE_RATE * 2 * seconds_start,
                  AUDIO_SAMPLE_RATE * 2 * seconds_end);
@@ -478,7 +615,7 @@ void Controls(float audio_level) {
   knobs_current[1] = roundf(hw.knob2.Process() * 500) / 500;
   if (knobs_current[1] != knobs_last[1]) {
     knobs_last[1] = knobs_current[1];
-    reverb_wet_dry = hw.knob2.Process() / 2;
+    reverb_wet_dry = hw.knob2.Process();
     if (tape[loop_index].IsPlayingOrFading()) {
       // daisyseed.PrintLine("setting rate to %2.1f", new_rate);
       // tape[loop_index].SetRate(hw.knob2.Process() * 2);
@@ -488,61 +625,48 @@ void Controls(float audio_level) {
 
   if (bpm_measure_quarter.Process()) {
     measure_beat_count++;
-    if (measure_beat_count % 32 == 0) {
-      measure_measure_count++;
-      for (size_t i = 0; i < NUM_LOOPS; i++) {
-        if (tape[i].IsPlayingOrFading()) {
-          tape[i].PlayingRestart();
-        }
+    bool new_recording = false;
+    if (measure_beat_count % 4 == 0) {
+      if (measure_beat_count % 12 == 0) {
+        regenerateChordProgression();
       }
+      // for (size_t i = 0; i < NUM_LOOPS; i++) {
+      //   if (tape[i].IsPlayingOrFading()) {
+      //     tape[i].PlayingRestart();
+      //   }
+      // }
       if (tape[loop_index].IsRecording()) {
         tape[loop_index].RecordingStop();
-      }
-      if (measure_measure_count < 6) {
         loop_index++;
-        loop_index = loop_index % NUM_LOOPS;
-        tape[loop_index].RecordingStart();
-        daisyseed.PrintLine(
-            "recording measure %d on loop %d (%2.1f)", measure_measure_count,
-            loop_index,
-            noteNumberToFrequency(notes[acrostic_i % notes.size()]));
       }
-    } else if (measure_measure_count >= 0) {
-      // daisyseed.PrintLine(
-      //     "bpm beat %d (%2.1f)", acrostic_i % 4,
-      //     noteNumberToFrequency(notes[acrostic_i % notes.size()]));
+      if (measure_beat_count / 4 < 30) {
+        loop_index = loop_index % NUM_LOOPS;
+        // prepare the next loop for recording
+        if (tape[(loop_index + 1) % NUM_LOOPS].IsPlayingOrFading()) {
+          tape[(loop_index + 1) % NUM_LOOPS].PlayingStop();
+        }
+        tape[loop_index].RecordingStart();
+        new_recording = true;
+      }
     }
-    if (measure_measure_count >= 0) {
-      acrostic_i++;
-      // uint16_t val = roundf(
-      //     847.3722995 *
-      //         log(noteNumberToFrequency(notes[acrostic_i % notes.size()])) -
-      //     1624.788016);
-
-      writeNoteCV(notes[acrostic_i % notes.size()]);
-      // uint16_t val = roundf(
-      //     noteNumberToVoltage(notes[acrostic_i % notes.size()]) / 3.3 *
-      //     4095);
-      // if (measure_beat_count % 32 != 0) {
-      //   daisyseed.PrintLine(
-      //       "DAC value: %d (%3.2f) %d", val,
-      //       noteNumberToFrequency(notes[acrostic_i % notes.size()]),
-      //       notes[acrostic_i % notes.size()]);
-      // }
-      // daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
-    }
+    int note_to_play = chord_note_sequence[measure_beat_count % 12] +
+                       chord_note_octaves[(measure_beat_count / 4) % 3];
+    daisyseed.PrintLine("[%d] measure: %d, beat: %d, note: %d", new_recording,
+                        measure_beat_count / 4, measure_beat_count % 4,
+                        note_to_play);
+    writeNoteCV(note_to_play);
 
   } else if (print_timer.Process()) {
     uint32_t currentTime = System::GetNow();
     if (currentTime - lastPrintTime >= printInterval) {
       if (controls_changed || true) {
-        daisyseed.PrintLine(
-            "%d, knob1=%2.3f knob2=%2.3f, enc=%d, usage=%2.1f%% per %d "
-            "samples, lfopan=%2.3f, lfoamp=%2.3f, audio=%2.4f",
-            loop_index, knobs_current[0], knobs_current[1], encoder_increment,
-            (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f,
-            audiocallback_sample_num, tape[0].lfos[0].Value(),
-            tape[0].lfos[1].Value(), audio_level);
+        // daisyseed.PrintLine(
+        //     "%d, knob1=%2.3f knob2=%2.3f, enc=%d, usage=%2.1f%% per %d "
+        //     "samples, lfopan=%2.3f, lfoamp=%2.3f, audio=%2.4f",
+        //     loop_index, knobs_current[0], knobs_current[1],
+        //     encoder_increment, (float)audiocallback_time_needed /
+        //     CYCLES_AVAILBLE * 100.0f, audiocallback_sample_num,
+        //     tape[0].lfos[0].Value(), tape[0].lfos[1].Value(), audio_level);
         controls_changed = false;
       }
       lastPrintTime = currentTime;

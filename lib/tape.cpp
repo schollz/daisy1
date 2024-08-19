@@ -20,7 +20,7 @@ void Tape::Init(size_t start, size_t max) {
       lfos[i].Init(period, -1, 1);
     } else if (i == TAPE_LFO_AMP) {
       float period = 5000.0f + static_cast<float>(rand() % 15000);
-      lfos[i].Init(period, 0.0, 0.9);
+      lfos[i].Init(period, 0.05, 0.9);
     }
   }
 }
@@ -241,10 +241,11 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
           if (head_play[head].state_time >= CROSSFADE_LIMIT) {
             head_play[head].SetState(TapeHead::STARTED);
           } else {
-            out[i] += buf_tape[head_play[head].pos] *
-                      crossfade_cos_in[head_play[head].state_time];
-            out[i + 1] += buf_tape[head_play[head].pos + 1] *
-                          crossfade_cos_in[head_play[head].state_time];
+            float fade_in = cosf((1.0f - ((float)head_play[head].state_time) /
+                                             ((float)CROSSFADE_LIMIT)) *
+                                 3.1415926535 / 2.0);
+            out[i] += buf_tape[head_play[head].pos] * fade_in;
+            out[i + 1] += buf_tape[head_play[head].pos + 1] * fade_in;
             head_play[head].Move();  // Added this to move the play head
             continue;
           }
@@ -286,10 +287,11 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
             // break out of sample loop;
             break;
           } else {
-            out[i] += buf_tape[head_play[head].pos] *
-                      crossfade_cos_out[head_play[head].state_time];
-            out[i + 1] += buf_tape[head_play[head].pos + 1] *
-                          crossfade_cos_out[head_play[head].state_time];
+            float fade_out = cosf((((float)head_play[head].state_time) /
+                                   ((float)CROSSFADE_LIMIT)) *
+                                  3.141592535f / 2.0f);
+            out[i] += buf_tape[head_play[head].pos] * fade_out;
+            out[i + 1] += buf_tape[head_play[head].pos + 1] * fade_out;
             head_play[head].Move();
             continue;
           }

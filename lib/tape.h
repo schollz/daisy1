@@ -5,11 +5,12 @@
 
 #include "balance2.h"
 #include "circularbuffer.h"
-#include "crossfade.h"
 #include "lfo.h"
 #include "resampler.h"
 #include "tapehead.h"
 #define TAPE_PLAY_HEADS 3
+
+#define CROSSFADE_LIMIT (48000 * 3)
 
 class Tape {
  public:

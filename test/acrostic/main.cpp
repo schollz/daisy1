@@ -1,6 +1,31 @@
-#include <iostream>
+const int NOTES_IN_CHORD = 3;
 
-const int SIZE = 3;
+const int8_t chord_dictionary[14][NOTES_IN_CHORD] = {
+    {0, 4, 7},                   // I (C major)
+    {2, 5, 9 - 12},              // ii (D minor)
+    {4, 7, 11 - 12},             // iii (E minor)
+    {5, 9, 12 - 12},             // IV (F major)
+    {7 - 12, 11 - 12, 14 - 12},  // V (G major)
+    {9 - 12, 12 - 12, 16 - 12},  // vi (A minor)
+    {11 - 12, 14 - 12, 17 - 12}, // vii° (B diminished)
+    {0, 3, 7},                   // i (C minor)
+    {2, 6, 9 - 12},              // II (D major)
+    {4, 8, 11 - 12},             // III (E major)
+    {5, 8 - 12, 12 - 12},        // iv (F minor)
+    {7 - 12, 10 - 12, 14 - 12},  // v (G minor)
+    {9 - 12, 13 - 12, 16 - 12},  // VI (A major)
+    {11 - 12, 15 - 12, 17 - 12}, // VII (B major)
+};
+
+const int CHORD_PROGRESSION_NUM = 4;
+const int CHORDS_IN_PROGRESSION = 4;
+const uint8_t chord_progress_dictionary[CHORD_PROGRESSION_NUM]
+                                       [CHORDS_IN_PROGRESSION] = {
+                                           {1, 5, 6, 4}, // I V iv IV
+                                           {1, 6, 4, 5}, // I vi IV V
+                                           {4, 1, 5, 6}, // IV I V vi
+                                           {1, 3, 6, 4}, // I iii vi IV
+};
 
 // Function to shuffle a single array
 void shuffleArray(int arr[], int size) {
@@ -52,59 +77,63 @@ int note_diff_between_notes(int note1, int note2) {
   return note3;
 }
 
-int main() {
-  srand(time(0)); // Seed the random number generator
+int chord_progression_index = 1; // rand() % CHORD_PROGRESSION_NUM;
+int chord_progression[CHORDS_IN_PROGRESSION][NOTES_IN_CHORD];
+int chord_note_sequence[CHORDS_IN_PROGRESSION * NOTES_IN_CHORD];
 
-  // Define four arrays
-  int arr1[SIZE] = {0, 2, 4};   // C major
-  int arr2[SIZE] = {-2, 0, 2};  // A minor
-  int arr3[SIZE] = {-1, 2, 4};  // E minor
-  int arr4[SIZE] = {-5, -1, 2}; // G major
+void regenerateChordProgression() {
+  for (int i = 0; i < CHORDS_IN_PROGRESSION; i++) {
+    for (int j = 0; j < NOTES_IN_CHORD; j++) {
+      chord_progression[i][j] = (int)chord_dictionary
+          [chord_progress_dictionary[chord_progression_index][i] - 1][j];
+    }
+  }
 
-  int arr_best[4][SIZE];
+  int arr_best[CHORDS_IN_PROGRESSION][NOTES_IN_CHORD];
   int score_best = -1;
 
-  for (int iterations = 0; iterations < 10; iterations++) {
+  for (int iterations = 0; iterations < 100; iterations++) {
 
     // Shuffle each array
-    shuffleArray(arr1, SIZE);
-    shuffleArray(arr2, SIZE);
-    shuffleArray(arr3, SIZE);
-    shuffleArray(arr4, SIZE);
+    for (int i = 0; i < CHORDS_IN_PROGRESSION; i++) {
+      shuffleArray(chord_progression[i], NOTES_IN_CHORD);
+    }
 
     int score_total = 0;
-    for (int i = 0; i < SIZE; ++i) {
-      int score = diff_between_notes(arr2[i], arr1[i]);
-      score += diff_between_notes(arr3[i], arr2[i]);
-      score += diff_between_notes(arr4[i], arr3[i]);
+    for (int i = 0; i < NOTES_IN_CHORD; ++i) {
+      int score =
+          diff_between_notes(chord_progression[1][i], chord_progression[0][i]);
+      score +=
+          diff_between_notes(chord_progression[2][i], chord_progression[1][i]);
+      score +=
+          diff_between_notes(chord_progression[3][i], chord_progression[2][i]);
       score_total += score;
     }
-    if (score_total > score_best || score_best == -1) {
-      for (int i = 0; i < SIZE; ++i) {
-        arr_best[0][i] = arr1[i];
-        arr_best[1][i] = arr2[i];
-        arr_best[2][i] = arr3[i];
-        arr_best[3][i] = arr4[i];
+    if (score_total < score_best || score_best == -1) {
+      for (int i = 0; i < NOTES_IN_CHORD; ++i) {
+        arr_best[0][i] = chord_progression[0][i];
+        arr_best[1][i] = chord_progression[1][i];
+        arr_best[2][i] = chord_progression[2][i];
+        arr_best[3][i] = chord_progression[3][i];
 
         // modify array so each subsequent note is the closest to the
         arr_best[1][i] =
-            note_diff_between_notes(arr_best[0][i], arr_best[1][i]);
+            note_diff_between_notes(arr_best[0][i], arr_best[1][i]) % 12;
         arr_best[2][i] =
-            note_diff_between_notes(arr_best[1][i], arr_best[2][i]);
+            note_diff_between_notes(arr_best[1][i], arr_best[2][i]) % 12;
         arr_best[3][i] =
-            note_diff_between_notes(arr_best[2][i], arr_best[3][i]);
+            note_diff_between_notes(arr_best[2][i], arr_best[3][i]) % 12;
       }
       score_best = score_total;
     }
   }
-
-  std::cout << "Total Score: " << score_best << std::endl;
-
-  for (int i = 0; i < 3; i++) {
-    // print out array
-    std::cout << arr_best[0][i] << " " << arr_best[1][i] << " "
-              << arr_best[2][i] << " " << arr_best[3][i] << std::endl;
+  // copy arr_best to chord_progression
+  int k = 0;
+  for (int j = 0; j < NOTES_IN_CHORD; j++) {
+    for (int i = 0; i < CHORDS_IN_PROGRESSION; i++) {
+      chord_progression[i][j] = arr_best[i][j];
+      chord_note_sequence[k] = arr_best[i][j];
+      k++;
+    }
   }
-
-  return 0;
 }

@@ -34,6 +34,10 @@ cmix = 0.; //hslider("[12] Stereo cross mix", 0., 0., 1., 0.01) : *(0.5);
 // dd1 = hslider("[05] Decay diffusion 1 [unit:%]", 70., 0., 100., 0.01) : *(0.01) : si.smoo;
 // dd2 = hslider("[06] Decay diffusion 2 [unit:%]", 50., 0., 100., 0.01) : *(0.01) : si.smoo;
 
+/* Sine wave modulation for Decay parameter */
+// modDecay = 0.75 + 0.1 * os.osc(1.0/15.0); /* Sine wave with period 5 seconds, oscillating between 0.6 and 0.9 */
+// dr = modDecay : si.smoo;
+
 fverb(lIn, rIn) =
   ((preInL : preInjectorL), (preInR : preInjectorR)) :
   crossInjector(ff1A, ff1B, ff1C, fb1, ff2A, ff2B, ff2C, fb2) :

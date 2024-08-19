@@ -1,6 +1,8 @@
 #ifndef CIRCULARBUFFER_H
 #define CIRCULARBUFFER_H
 
+#include <stdlib.h>
+
 class CircularBuffer {
  public:
   CircularBuffer(size_t size) : size(size), head(0) {

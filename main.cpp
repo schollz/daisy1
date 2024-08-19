@@ -37,7 +37,7 @@ const uint8_t chord_progress_dictionary[CHORD_PROGRESSION_NUM]
                                        [CHORDS_IN_PROGRESSION] = {
                                            {1, 5, 6, 4},  // I V iv IV
                                            {1, 6, 4, 5},  // I vi IV V
-                                           {4, 1, 5, 6},  // IV I V vi
+                                           {4, 5, 1, 6},  // IV V I iii
                                            {1, 3, 6, 4},  // I iii vi IV
 };
 
@@ -83,7 +83,7 @@ int note_diff_between_notes(int note1, int note2) {
   return note3;
 }
 
-int chord_progression_index = 3;  // rand() % CHORD_PROGRESSION_NUM;
+int chord_progression_index = 2;  // rand() % CHORD_PROGRESSION_NUM;
 int chord_progression[CHORDS_IN_PROGRESSION][NOTES_IN_CHORD];
 int chord_note_sequence[CHORDS_IN_PROGRESSION * NOTES_IN_CHORD];
 int chord_note_octaves[3] = {72, 48, 60};
@@ -248,8 +248,7 @@ Metro print_timer;
 Metro bpm_measure;          // 4 quarer notes
 Metro bpm_measure_quarter;  // 1 quarter note
 
-CircularBuffer tape_circular_buffer(4800);
-// CircularBuffer tape_circular_buffer(2 * 2 * CROSSFADE_LIMIT);
+CircularBuffer tape_circular_buffer(CROSSFADE_PREROLL);
 float DSY_SDRAM_BSS tape_linear_buffer[MAX_SIZE];
 float drywet = 0.5f;
 

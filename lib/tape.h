@@ -10,7 +10,7 @@
 #include "tapehead.h"
 #define TAPE_PLAY_HEADS 3
 
-#define CROSSFADE_LIMIT (48000 * 3)
+#define CROSSFADE_PREROLL 4800
 
 class Tape {
  public:
@@ -27,7 +27,7 @@ class Tape {
   TapeHead head_play[TAPE_PLAY_HEADS];
   size_t head_play_last_pos = 0;
   size_t buffer_max = 1000;
-  size_t buffer_start = 2 * CROSSFADE_LIMIT;
+  size_t buffer_start = 1000;
   size_t buffer_end = buffer_start + buffer_max;
   std::bitset<TAPE_FLAG_COUNT> flags;
   LFO lfos[TAPE_LFO_COUNT];
@@ -52,11 +52,13 @@ class Tape {
                float *out, size_t size, uint32_t current_time);
   void SetPan(float pan);
   void SetRate(float rate);
+  void SetTapeEnd(size_t pos);
 
  private:
   float pan = 0;
   float rate = 1.0f;
   Resampler resampler;
+  size_t crossfade_limit = 1000;
 };
 
 #endif

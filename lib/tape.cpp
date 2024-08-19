@@ -5,6 +5,7 @@ void Tape::Init(size_t start, size_t max) {
   buffer_start = start;
   buffer_end = max;
   buffer_max = max;
+  crossfade_limit = (max - start) / 32;
   head_play_last_pos = buffer_start;
   head_rec.pos = buffer_start;
   head_rec.SetState(TapeHead::STOPPED);
@@ -27,12 +28,22 @@ void Tape::Init(size_t start, size_t max) {
 
 void Tape::RecordingStart() { head_rec.SetState(TapeHead::STARTING); }
 
+void Tape::SetTapeEnd(size_t pos) {
+  buffer_end = pos;
+  crossfade_limit = (buffer_end - buffer_start) / 8;
+  if (crossfade_limit < 256) {
+    crossfade_limit = 256;
+  } else if (crossfade_limit > 48000 * 3) {
+    crossfade_limit = 48000 * 3;
+  }
+}
+
 void Tape::RecordingStop() {
   if (head_rec.IsState(TapeHead::STARTING)) {
     head_rec.SetState(TapeHead::STOPPED);
   } else if (head_rec.IsState(TapeHead::STARTED)) {
     head_rec.SetState(TapeHead::STOPPING);
-    buffer_end = head_rec.pos;
+    SetTapeEnd(head_rec.pos);
     if (IsPlaying()) {
       if (head_play_last_pos < buffer_start ||
           head_play_last_pos > buffer_end) {
@@ -154,8 +165,8 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
   // and will only update the tape buffer (buf_tape)
   if (flags.test(DO_ERASE)) {
     // erase current tape buffer
-    for (size_t i = buffer_start - (CROSSFADE_LIMIT * 2 * 2);
-         i < buffer_start + buffer_max + (CROSSFADE_LIMIT * 2 * 2); i += 2) {
+    for (size_t i = buffer_start - (CROSSFADE_PREROLL * 2);
+         i < buffer_start + buffer_max + (CROSSFADE_PREROLL * 2); i += 2) {
       buf_tape[i] = 0;
       buf_tape[i + 1] = 0;
     }
@@ -181,11 +192,11 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
         // if the buffer is full, stop recording
         if (head_rec.pos >= buffer_start + buffer_max) {
           head_rec.SetState(TapeHead::STOPPING);
-          buffer_end = head_rec.pos;
+          SetTapeEnd(head_rec.pos);
         }
       } else if (head_rec.IsState(TapeHead::STOPPING)) {
-        // continue to write until 2*CROSSFADE_LIMIT away from the buffer end
-        if (head_rec.state_time >= 2 * CROSSFADE_LIMIT) {
+        // continue to write until 2*crossfade_limit away from the buffer end
+        if (head_rec.state_time >= 2 * crossfade_limit) {
           head_rec.SetState(TapeHead::STOPPED);
         }
       }
@@ -238,11 +249,11 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
 
         // if starting, crossfade in
         if (head_play[head].IsState(TapeHead::STARTING)) {
-          if (head_play[head].state_time >= CROSSFADE_LIMIT) {
+          if (head_play[head].state_time >= crossfade_limit) {
             head_play[head].SetState(TapeHead::STARTED);
           } else {
             float fade_in = cosf((1.0f - ((float)head_play[head].state_time) /
-                                             ((float)CROSSFADE_LIMIT)) *
+                                             ((float)crossfade_limit)) *
                                  3.1415926535 / 2.0);
             out[i] += buf_tape[head_play[head].pos] * fade_in;
             out[i + 1] += buf_tape[head_play[head].pos + 1] * fade_in;
@@ -282,13 +293,13 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
         }
         // if stopping, crossfade out
         if (head_play[head].IsState(TapeHead::STOPPING)) {
-          if (head_play[head].state_time >= CROSSFADE_LIMIT) {
+          if (head_play[head].state_time >= crossfade_limit) {
             head_play[head].SetState(TapeHead::STOPPED);
             // break out of sample loop;
             break;
           } else {
             float fade_out = cosf((((float)head_play[head].state_time) /
-                                   ((float)CROSSFADE_LIMIT)) *
+                                   ((float)crossfade_limit)) *
                                   3.141592535f / 2.0f);
             out[i] += buf_tape[head_play[head].pos] * fade_out;
             out[i + 1] += buf_tape[head_play[head].pos + 1] * fade_out;

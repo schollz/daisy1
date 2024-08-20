@@ -2,6 +2,7 @@
 #include "tape.h"
 
 void Tape::Init(size_t start, size_t max) {
+  buffer_min = start;
   buffer_start = start;
   buffer_end = max;
   buffer_max = max;
@@ -27,6 +28,20 @@ void Tape::Init(size_t start, size_t max) {
 }
 
 void Tape::RecordingStart() { head_rec.SetState(TapeHead::STARTING); }
+
+void Tape::SetPhaseStart(float phase) {
+  buffer_start = roundf(phase * ((float)(buffer_max - buffer_min)));
+}
+
+void Tape::SetPhaseEnd(float phase) {
+  buffer_end = roundf(phase * ((float)(buffer_max - buffer_min)));
+}
+
+float Tape::GetPhase() {
+  return ((float)head_play_last_pos / ((float)(buffer_max - buffer_min)));
+}
+
+void Tape::SetTapeStart(size_t pos) { buffer_start = pos; }
 
 void Tape::SetTapeEnd(size_t pos) {
   buffer_end = pos;

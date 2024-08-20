@@ -52,9 +52,14 @@ class Tape {
                float *out, size_t size, uint32_t current_time);
   void SetPan(float pan);
   void SetRate(float rate);
+  void SetTapeStart(size_t pos);
   void SetTapeEnd(size_t pos);
+  void SetPhaseStart(float phase);  // phase is 0-1
+  void SetPhaseEnd(float phase);
+  float GetPhase();
 
  private:
+  size_t buffer_min = 0;
   float pan = 0;
   float rate = 1.0f;
   Resampler resampler;

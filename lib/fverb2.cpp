@@ -425,7 +425,7 @@ void initializeReverb() {
 }
 
 void ProcessReverb(int count, float* input0, float* input1, float* output0,
-                   float* output1) {
+                   float* output1, float wet) {
   float fSlow0 = fConst1 * std::exp(-(fConst3 * float(fHslider0)));
   float fSlow1 = fConst4 * float(fHslider1);
   float fSlow2 = fConst4 * float(fHslider2);
@@ -645,5 +645,7 @@ void ProcessReverb(int count, float* input0, float* input1, float* output0,
     fRec41[1] = fRec41[0];
     fRec40[1] = fRec40[0];
     fRec38[1] = fRec38[0];
+    output0[i0] = (wet)*output0[i0] + (1 - wet) * input0[i0];
+    output1[i0] = (wet)*output1[i0] + (1 - wet) * input1[i0];
   }
 }

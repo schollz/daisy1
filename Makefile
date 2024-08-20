@@ -11,7 +11,8 @@ CPP_SOURCES = main.cpp \
 	lib/tapehead.cpp \
 	lib/balance2.cpp \
 	lib/lfo.cpp \
-	lib/fverb2.cpp 
+	lib/fverb2.cpp \
+	lib/compressor.cpp
 	
 # C_SOURCES = audio.c
 
@@ -25,8 +26,6 @@ XFADE_SAMPLES = 480
 # Core location, and generic Makefile.
 SYSTEM_FILES_DIR = $(LIBDAISY_DIR)/core
 include $(SYSTEM_FILES_DIR)/Makefile
-
-
 
 .venv:
 	uv venv 

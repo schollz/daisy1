@@ -178,7 +178,10 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
     // prepend the buffer start with all the samples in the circular buffer
     size_t circular_size = buf_circular.GetSize();
     for (size_t i = 0; i < circular_size; i++) {
-      buf_tape[buffer_start - circular_size + i - 1] = buf_circular.Read(i);
+      float fade_in = cosf((1.0f - ((float)i / ((float)circular_size))) *
+                           3.1415926535 / 2.0);
+      buf_tape[buffer_start - circular_size + i - 1] =
+          buf_circular.Read(i) * fade_in;
     }
     head_rec.SetState(TapeHead::STARTED);
   }

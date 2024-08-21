@@ -14,6 +14,14 @@ class SampleRateConverter {
     initialized = false;
   }
 
+  void Process(const float* input_buffer, size_t input_size,
+               float* output_buffer, size_t output_size) {
+    std::vector<float> output = Process(input_buffer, input_size, output_size);
+    for (size_t i = 0; i < output_size; i++) {
+      output_buffer[i] = output[i];
+    }
+  }
+
   // Process an input buffer and return a vector of output samples
   std::vector<float> Process(const float* input_buffer, size_t input_size,
                              size_t output_size) {
@@ -72,6 +80,21 @@ class SampleRateConverter {
 class Resampler {
  public:
   Resampler(){};
+
+  void ProcessMono(const float* input_buffer, size_t input_size,
+                   float* output_buffer, size_t output_size) {
+    std::vector<float> input_left(input_size);
+    std::vector<float> output_left(output_size);
+
+    // Process the left channel
+    output_left = converter_left.Process(input_buffer, input_size, output_size);
+
+    // Interleave the output buffer
+    for (size_t i = 0; i < output_size; i++) {
+      output_buffer[i] = output_left[i];
+    }
+  }
+
   void Process(const float* input_buffer, size_t input_size,
                float* output_buffer, size_t output_size) {
     std::vector<float> input_left(input_size / 2);

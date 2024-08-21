@@ -65,7 +65,8 @@ class Tape {
   size_t buffer_min = 0;
   float pan = 0;
   float rate = 1.0f;
-  Resampler resampler;
+  SampleRateConverter resampler_l;
+  SampleRateConverter resampler_r;
   size_t crossfade_limit = 1000;
   SallenKeyOnePoleLPF lpf[2];
   bool is_stereo = false;

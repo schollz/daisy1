@@ -7,7 +7,7 @@
 #include <cmath>
 #include <cstdint>
 
-class KorgLPF {
+class LPF {
  private:
   int fSampleRate;
   float fConst0;
@@ -22,7 +22,7 @@ class KorgLPF {
   float fRec2[2];
 
  public:
-  KorgLPF() {}
+  LPF() {}
 
   //   void metadata(Meta* m) {
   //     m->declare("author", "Eric Tarr");

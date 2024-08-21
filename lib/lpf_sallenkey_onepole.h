@@ -7,7 +7,7 @@
 #include <cmath>
 #include <cstdint>
 
-class SallenKeyOnePoleLPF {
+class LPF {
  private:
   int fSampleRate;
   float fConst0;
@@ -19,7 +19,7 @@ class SallenKeyOnePoleLPF {
   float fRec1[2];
 
  public:
-  SallenKeyOnePoleLPF() {}
+  LPF() {}
 
   //   void metadata(Meta* m) {
   //     m->declare("author", "Eric Tarr");

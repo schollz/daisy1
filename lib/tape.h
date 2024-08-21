@@ -34,7 +34,7 @@ class Tape {
   std::bitset<TAPE_FLAG_COUNT> flags;
   LFO lfos[TAPE_LFO_COUNT];
 
-  void Init(size_t start, size_t max, CircularBuffer &buf_circular,
+  void Init(size_t endpoints[2], CircularBuffer &buf_circular,
             float sample_rate, bool is_stereo);
   void RecordingStart();
   void RecordingStop();

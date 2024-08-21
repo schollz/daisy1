@@ -320,8 +320,10 @@ int main(void) {
 
   // intialize tapes
   for (size_t i = 0; i < NUM_LOOPS; i++) {
-    tape[i].Init(i * (MAX_SIZE / NUM_LOOPS), (i + 1) * (MAX_SIZE / NUM_LOOPS),
-                 tape_circular_buffer, AUDIO_SAMPLE_RATE, stereo_mode);
+    size_t endpoints[2] = {i * MAX_SIZE / NUM_LOOPS,
+                           (i + 1) * MAX_SIZE / NUM_LOOPS};
+    tape[i].Init(endpoints, tape_circular_buffer, AUDIO_SAMPLE_RATE,
+                 stereo_mode);
   }
 
   // // calibrate dac values

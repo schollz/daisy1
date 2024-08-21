@@ -1,19 +1,15 @@
 
 #include "tape.h"
 
-void Tape::Init(size_t endpoint1, size_t endpoint2,
-                CircularBuffer &buf_circular, float sample_rate,
-                bool is_stereo) {
+void Tape::Init(size_t endpoints[2], CircularBuffer &buf_circular,
+                float sample_rate, bool is_stereo) {
   this->is_stereo = is_stereo;
   this->sample_rate = sample_rate;
-  if (is_stereo) {
-    endpoint1 = (endpoint1 / 2) * 2;
-    endpoint2 = (endpoint2 / 2) * 2;
+  for (size_t i = 0; i < 2; i++) {
+    this->endpoints[i] = (endpoints[i] / 2) * 2;
   }
-  endpoints[0] = endpoint1;
-  endpoints[1] = endpoint2;
-  buffer_min = endpoint1 + buf_circular.GetSize();
-  buffer_max = buffer_min + 7 * (endpoint2 - buffer_min) / 8;
+  buffer_min = this->endpoints[0] + buf_circular.GetSize();
+  buffer_max = buffer_min + 7 * (this->endpoints[1] - buffer_min) / 8;
   if (is_stereo) {
     // make sure it is a power of two
     buffer_max = (buffer_max / 2) * 2;
@@ -54,16 +50,16 @@ void Tape::Init(size_t endpoint1, size_t endpoint2,
 void Tape::RecordingStart() { head_rec.SetState(TapeHead::STARTING); }
 
 void Tape::SetPhaseStart(float phase) {
-  buffer_start = roundf(phase * ((float)(buffer_max - buffer_min)));
-  if (is_stereo) {
-    buffer_start = (buffer_start / 2) * 2;
+  size_t buffer_start_new = roundf(phase * ((float)(buffer_max - buffer_min)));
+  if (buffer_start_new < buffer_end) {
+    SetTapeStart(buffer_start_new);
   }
 }
 
 void Tape::SetPhaseEnd(float phase) {
-  buffer_end = roundf(phase * ((float)(buffer_max - buffer_min)));
-  if (is_stereo) {
-    buffer_end = (buffer_end / 2) * 2;
+  size_t buffer_end_new = roundf(phase * ((float)(buffer_max - buffer_min)));
+  if (buffer_end_new > buffer_start) {
+    SetTapeEnd(buffer_end_new);
   }
 }
 

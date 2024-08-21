@@ -23,9 +23,9 @@ void Tape::Init(size_t start, size_t max, float sample_rate) {
     } else if (i == TAPE_LFO_AMP) {
       float period = 10000.0f + static_cast<float>(rand() % 20000);
       lfos[i].Init(period, 0.05, 0.9);
-    } else if (i== TAPE_LFO_COUNT) {
+    } else if (i == TAPE_LFO_COUNT) {
       float period = 10000.0f + static_cast<float>(rand() % 20000);
-      lfos[i].Init(period, 0.5,0.9);      
+      lfos[i].Init(period, 0.5, 0.9);
     }
   }
 
@@ -343,24 +343,24 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
       head_play_last_pos = head_play_last_pos_before_peek;
     }
 
-    // apply panning
-    lfos[TAPE_LFO_PAN].Update(current_time);
-    Balance2_Process(out, input_size, lfos[TAPE_LFO_PAN].Value());
+    // // apply panning
+    // lfos[TAPE_LFO_PAN].Update(current_time);
+    // Balance2_Process(out, input_size, lfos[TAPE_LFO_PAN].Value());
 
-    // apply amplitude modulation
-    lfos[TAPE_LFO_AMP].Update(current_time);
-    float val = lfos[TAPE_LFO_AMP].Value();
-    for (size_t i = 0; i < input_size; i += 2) {
-      out[i] = out[i] * val;
-      out[i + 1] = out[i + 1] * val;
-    }
+    // // apply amplitude modulation
+    // lfos[TAPE_LFO_AMP].Update(current_time);
+    // float val = lfos[TAPE_LFO_AMP].Value();
+    // for (size_t i = 0; i < input_size; i += 2) {
+    //   out[i] = out[i] * val;
+    //   out[i + 1] = out[i + 1] * val;
+    // }
 
     // resample the output buffer and add it to the main output
     resampler.Process(out, input_size, out2, size);
 
     // de-interleave
-    float outl[size/2];
-    float outr[size/2];
+    float outl[size / 2];
+    float outr[size / 2];
     for (size_t i = 0; i < size; i += 2) {
       outl[i / 2] = out2[i];
       outr[i / 2] = out2[i + 1];
@@ -368,11 +368,11 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
 
     // apply filtering
     // apply filter modulation
-    lfos[TAPE_LFO_LPF].Update(current_time);
+    // lfos[TAPE_LFO_LPF].Update(current_time);
     lpf[0].SetFreq(lfos[TAPE_LFO_LPF].Value());
     lpf[1].SetFreq(lfos[TAPE_LFO_LPF].Value());
-    lpf[0].Process(size/2, outl);
-    lpf[1].Process(size/2, outr);
+    lpf[0].Process(size / 2, outl);
+    lpf[1].Process(size / 2, outr);
 
     // re-interleave
     for (size_t i = 0; i < size; i += 2) {

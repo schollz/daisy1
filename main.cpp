@@ -2,7 +2,12 @@
 #include <cstring>
 // #include <map>
 #include <vector>
-
+// definitions
+#define INCLUDE_REVERB
+#define INCLUDE_COMPRESSOR
+// #define INCLUDE_SEQUENCER
+#define INCLUDE_TAPE_LPF
+//
 #include "core_cm7.h"
 #include "daisy_pod.h"
 #include "daisysp.h"
@@ -10,9 +15,6 @@
 #include "lib/chords.h"
 #include "lib/lfo.h"
 #include "lib/tape.h"
-
-#define INCLUDE_REVERB
-#define INCLUDE_COMPRESSOR
 
 #ifdef INCLUDE_REVERB
 #include "lib/fverb2.h"
@@ -66,7 +68,6 @@ void writeNoteCV(uint8_t note) {
   // Transmit the data
   i2c.TransmitBlocking(0x60, data, 2, 1000);
 }
-
 
 #define NUM_LOOPS 6
 float bpm_set = 30.0f;
@@ -443,14 +444,20 @@ void Controls(float audio_level) {
   if (inc != 0) {
     encoder_increment += inc;
     controls_changed = true;
-    loop_index = abs(encoder_increment) % NUM_LOOPS;
+    if (encoder_increment < 0) {
+      loop_index = 0;
+    } else if (encoder_increment < NUM_LOOPS) {
+      loop_index = encoder_increment;
+    }
+    // loop_index = abs(encoder_increment) % NUM_LOOPS;
   }
 
   // make array of knob processes
   knobs_current[0] = roundf(hw.knob1.Process() * 500) / 500;
   if (knobs_current[0] != knobs_last[0]) {
     knobs_last[0] = knobs_current[0];
-    tape[loop_index].SetPan(knobs_current[0] * 2.0f - 1.0f);
+    tape[loop_index].lfos[2].SetValue(knobs_current[0]);
+    // tape[loop_index].SetPan(knobs_current[0] * 2.0f - 1.0f);
     controls_changed = true;
   }
   knobs_current[1] = roundf(hw.knob2.Process() * 500) / 500;
@@ -465,6 +472,7 @@ void Controls(float audio_level) {
   }
 
   if (bpm_measure_quarter.Process()) {
+#ifdef INCLUDE_SEQUENCER
     measure_beat_count++;
     bool new_recording = false;
     if (measure_beat_count % 4 == 0) {
@@ -496,18 +504,18 @@ void Controls(float audio_level) {
                         measure_beat_count / 4, measure_beat_count % 4,
                         note_to_play);
     writeNoteCV(note_to_play);
-
+#endif
   } else if (print_timer.Process()) {
     uint32_t currentTime = System::GetNow();
     if (currentTime - lastPrintTime >= printInterval) {
       if (controls_changed || true) {
-        // daisyseed.PrintLine(
-        //     "%d, knob1=%2.3f knob2=%2.3f, enc=%d, usage=%2.1f%% per %d "
-        //     "samples, lfopan=%2.3f, lfoamp=%2.3f, audio=%2.4f",
-        //     loop_index, knobs_current[0], knobs_current[1],
-        //     encoder_increment, (float)audiocallback_time_needed /
-        //     CYCLES_AVAILBLE * 100.0f, audiocallback_sample_num,
-        //     tape[0].lfos[0].Value(), tape[0].lfos[1].Value(), audio_level);
+        daisyseed.PrintLine(
+            "%d, knob1=%2.3f knob2=%2.3f, enc=%d, usage=%2.1f%% per %d "
+            "samples, pan=%2.2f, amp=%2.2f, lpf=%2.2f, audio=%2.4f",
+            loop_index, knobs_current[0], knobs_current[1], encoder_increment,
+            (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f,
+            audiocallback_sample_num, tape[0].lfos[0].Value(),
+            tape[0].lfos[1].Value(), tape[0].lfos[2].Value(), audio_level);
         controls_changed = false;
       }
       lastPrintTime = currentTime;

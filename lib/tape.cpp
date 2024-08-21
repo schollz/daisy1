@@ -1,18 +1,35 @@
 
 #include "tape.h"
 
-void Tape::Init(size_t start, size_t max, float sample_rate) {
-  buffer_min = start;
-  buffer_start = start;
-  buffer_end = max;
-  buffer_max = max;
-  crossfade_limit = (max - start) / 32;
+void Tape::Init(size_t endpoint1, size_t endpoint2,
+                CircularBuffer &buf_circular, float sample_rate,
+                bool is_stereo) {
+  this->is_stereo = is_stereo;
+  this->sample_rate = sample_rate;
+  if (is_stereo) {
+    endpoint1 = (endpoint1 / 2) * 2;
+    endpoint2 = (endpoint2 / 2) * 2;
+  }
+  endpoints[0] = endpoint1;
+  endpoints[1] = endpoint2;
+  buffer_min = endpoint1 + buf_circular.GetSize();
+  buffer_max = buffer_min + 7 * (endpoint2 - buffer_min) / 8;
+  if (is_stereo) {
+    // make sure it is a power of two
+    buffer_max = (buffer_max / 2) * 2;
+    buffer_min = (buffer_min / 2) * 2;
+    buffer_start = buffer_min;
+  }
+  buffer_start = buffer_min;
+  SetTapeEnd(buffer_end);
   head_play_last_pos = buffer_start;
   head_rec.pos = buffer_start;
   head_rec.SetState(TapeHead::STOPPED);
+  head_rec.SetStereo(is_stereo);
   for (size_t i = 0; i < TAPE_PLAY_HEADS; i++) {
     head_play[i].pos = buffer_start;
     head_play[i].SetState(TapeHead::STOPPED);
+    head_play[i].SetStereo(is_stereo);
   }
   // initialize the lfos
   for (size_t i = 0; i < TAPE_LFO_COUNT; i++) {
@@ -39,25 +56,42 @@ void Tape::RecordingStart() { head_rec.SetState(TapeHead::STARTING); }
 
 void Tape::SetPhaseStart(float phase) {
   buffer_start = roundf(phase * ((float)(buffer_max - buffer_min)));
+  if (is_stereo) {
+    buffer_start = (buffer_start / 2) * 2;
+  }
 }
 
 void Tape::SetPhaseEnd(float phase) {
   buffer_end = roundf(phase * ((float)(buffer_max - buffer_min)));
+  if (is_stereo) {
+    buffer_end = (buffer_end / 2) * 2;
+  }
 }
 
 float Tape::GetPhase() {
   return ((float)head_play_last_pos / ((float)(buffer_max - buffer_min)));
 }
 
-void Tape::SetTapeStart(size_t pos) { buffer_start = pos; }
+void Tape::SetTapeStart(size_t pos) {
+  if (is_stereo) {
+    pos = (pos / 2) * 2;
+  }
+  buffer_start = pos;
+}
 
 void Tape::SetTapeEnd(size_t pos) {
+  if (is_stereo) {
+    pos = (pos / 2) * 2;
+  }
   buffer_end = pos;
   crossfade_limit = (buffer_end - buffer_start) / 8;
   if (crossfade_limit < 256) {
     crossfade_limit = 256;
   } else if (crossfade_limit > 48000 * 3) {
     crossfade_limit = 48000 * 3;
+  }
+  if (is_stereo) {
+    crossfade_limit = (crossfade_limit / 2) * 2;
   }
 }
 
@@ -188,10 +222,8 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
   // and will only update the tape buffer (buf_tape)
   if (flags.test(DO_ERASE)) {
     // erase current tape buffer
-    for (size_t i = buffer_start - (CROSSFADE_PREROLL * 2);
-         i < buffer_start + buffer_max + (CROSSFADE_PREROLL * 2); i += 2) {
+    for (size_t i = endpoints[0]; i < endpoints[1]; i++) {
       buf_tape[i] = 0;
-      buf_tape[i + 1] = 0;
     }
     flags.reset(DO_ERASE);
   }

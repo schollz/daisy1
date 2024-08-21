@@ -34,7 +34,8 @@ class Tape {
   std::bitset<TAPE_FLAG_COUNT> flags;
   LFO lfos[TAPE_LFO_COUNT];
 
-  void Init(size_t start, size_t max, float sample_rate);
+  void Init(size_t start, size_t max, CircularBuffer &buf_circular,
+            float sample_rate, bool is_stereo);
   void RecordingStart();
   void RecordingStop();
   void RecordingErase();
@@ -67,6 +68,9 @@ class Tape {
   Resampler resampler;
   size_t crossfade_limit = 1000;
   SallenKeyOnePoleLPF lpf[2];
+  bool is_stereo = false;
+  size_t endpoints[2];
+  float sample_rate;
 };
 
 #endif

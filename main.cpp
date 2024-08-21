@@ -38,6 +38,7 @@ uint8_t DMA_BUFFER_MEM_SECTION buffer_spi[4];
 using namespace daisy;
 using namespace daisysp;
 
+bool stereo_mode = false;
 DaisyPod hw;
 DaisySeed daisyseed;
 LFO lfotest;
@@ -131,7 +132,11 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
   // passthrough
   for (size_t i = 0; i < size; i += 2) {
     out[i] = (0.5 * in[i]) + audiocallback_bufout[i];
-    out[i + 1] = (0.5 * in[i + 1]) + audiocallback_bufout[i + 1];
+    if (stereo_mode) {
+      out[i + 1] = (0.5 * in[i + 1]) + audiocallback_bufout[i + 1];
+    } else {
+      out[i + 1] = out[i];
+    }
   }
 
   // de-interleave
@@ -314,16 +319,9 @@ int main(void) {
                            AUDIO_SAMPLE_RATE / AUDIO_BLOCK_SIZE);
 
   // intialize tapes
-  daisyseed.PrintLine("time per loop: %2.1f seconds",
-                      (float)MAX_SECONDS / NUM_LOOPS);
   for (size_t i = 0; i < NUM_LOOPS; i++) {
-    size_t seconds_start = (i * (MAX_SECONDS - 1) / NUM_LOOPS) + 4;
-    size_t seconds_end = ((i + 1) * (MAX_SECONDS - 1) / NUM_LOOPS);
-    tape[i].Init(AUDIO_SAMPLE_RATE * 2 * seconds_start,
-                 AUDIO_SAMPLE_RATE * 2 * seconds_end, AUDIO_SAMPLE_RATE);
-    daisyseed.PrintLine("tape[%d] start=%d end=%d (%d)", i,
-                        tape[i].buffer_start / 1000, tape[i].buffer_end / 1000,
-                        MAX_SIZE / 1000);
+    tape[i].Init(i * (MAX_SIZE / NUM_LOOPS), (i + 1) * (MAX_SIZE / NUM_LOOPS),
+                 tape_circular_buffer, AUDIO_SAMPLE_RATE, stereo_mode);
   }
 
   // // calibrate dac values

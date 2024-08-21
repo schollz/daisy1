@@ -14,8 +14,6 @@
 #include "tapehead.h"
 #define TAPE_PLAY_HEADS 3
 
-#define CROSSFADE_PREROLL 4800
-
 class Tape {
  public:
   enum TapeFlags {

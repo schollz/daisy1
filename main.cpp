@@ -220,7 +220,7 @@ int main(void) {
   // daisyseed.PrintLine("MCP4728 test done");
 
 #ifdef INLUCDE_COMPRESSOR
-  compressor.init(SAMPLE_RATE)
+  compressor.init(AUDIO_SAMPLE_RATE)
 #endif
 
 #ifdef INCLUDE_REVERB
@@ -319,7 +319,7 @@ int main(void) {
     size_t seconds_start = (i * (MAX_SECONDS - 1) / NUM_LOOPS) + 4;
     size_t seconds_end = ((i + 1) * (MAX_SECONDS - 1) / NUM_LOOPS);
     tape[i].Init(AUDIO_SAMPLE_RATE * 2 * seconds_start,
-                 AUDIO_SAMPLE_RATE * 2 * seconds_end);
+                 AUDIO_SAMPLE_RATE * 2 * seconds_end, AUDIO_SAMPLE_RATE);
     daisyseed.PrintLine("tape[%d] start=%d end=%d (%d)", i,
                         tape[i].buffer_start / 1000, tape[i].buffer_end / 1000,
                         MAX_SIZE / 1000);

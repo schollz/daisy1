@@ -3,6 +3,7 @@
 #include <bitset>
 #include <cstring>
 
+#include "lpf_oberheim.h"
 #include "balance2.h"
 #include "circularbuffer.h"
 #include "lfo.h"
@@ -21,6 +22,7 @@ class Tape {
   enum TapeLFO {
     TAPE_LFO_PAN,
     TAPE_LFO_AMP,
+    TAPE_LFO_LPF,
     TAPE_LFO_COUNT,
   };
   TapeHead head_rec;
@@ -32,7 +34,7 @@ class Tape {
   std::bitset<TAPE_FLAG_COUNT> flags;
   LFO lfos[TAPE_LFO_COUNT];
 
-  void Init(size_t start, size_t max);
+  void Init(size_t start, size_t max, float sample_rate);
   void RecordingStart();
   void RecordingStop();
   void RecordingErase();
@@ -64,6 +66,7 @@ class Tape {
   float rate = 1.0f;
   Resampler resampler;
   size_t crossfade_limit = 1000;
+  OberheimLPF lpf[2];
 };
 
 #endif

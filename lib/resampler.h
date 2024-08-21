@@ -94,8 +94,8 @@ class Resampler {
 
     // Interleave the output buffer
     for (size_t i = 0; i < output_size; i += 2) {
-      output_buffer[i] += output_left[i / 2];
-      output_buffer[i + 1] += output_right[i / 2];
+      output_buffer[i] = output_left[i / 2];
+      output_buffer[i + 1] = output_right[i / 2];
     }
   }
 

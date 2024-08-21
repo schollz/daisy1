@@ -1,7 +1,7 @@
 
 #include "tape.h"
 
-void Tape::Init(size_t start, size_t max) {
+void Tape::Init(size_t start, size_t max, float sample_rate) {
   buffer_min = start;
   buffer_start = start;
   buffer_end = max;
@@ -23,7 +23,15 @@ void Tape::Init(size_t start, size_t max) {
     } else if (i == TAPE_LFO_AMP) {
       float period = 10000.0f + static_cast<float>(rand() % 20000);
       lfos[i].Init(period, 0.05, 0.9);
+    } else if (i== TAPE_LFO_COUNT) {
+      float period = 10000.0f + static_cast<float>(rand() % 20000);
+      lfos[i].Init(period, 0.5,0.9);      
     }
+  }
+
+  // initialize the lpfs
+  for (size_t i = 0; i < 2; i++) {
+    lpf[i].init(sample_rate);
   }
 }
 
@@ -230,6 +238,7 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
         4;
 
     float out[input_size];
+    float out2[size];
     size_t head_play_last_pos_before_peek = 0;
     bool head_play_last_pos_is_set = false;
 
@@ -347,13 +356,35 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
     }
 
     // resample the output buffer and add it to the main output
-    resampler.Process(out, input_size, out_main, size);
+    resampler.Process(out, input_size, out2, size);
 
-    // // apply the output buffer to the main output
-    // for (size_t i = 0; i < size; i += 2) {
-    //   out_main[i] += out[i];
-    //   out_main[i + 1] += out[i + 1];
-    // }
+    // de-interleave
+    float outl[size/2];
+    float outr[size/2];
+    for (size_t i = 0; i < size; i += 2) {
+      outl[i / 2] = out2[i];
+      outr[i / 2] = out2[i + 1];
+    }
+
+    // apply filtering
+    // apply filter modulation
+    lfos[TAPE_LFO_LPF].Update(current_time);
+    lpf[0].SetFreq(lfos[TAPE_LFO_LPF].Value());
+    lpf[1].SetFreq(lfos[TAPE_LFO_LPF].Value());
+    lpf[0].Process(size/2, outl);
+    lpf[1].Process(size/2, outr);
+
+    // re-interleave
+    for (size_t i = 0; i < size; i += 2) {
+      out2[i] = outl[i / 2];
+      out2[i + 1] = outr[i / 2];
+    }
+
+    // add the output to the main
+    for (size_t i = 0; i < size; i += 2) {
+      out_main[i] += out2[i];
+      out_main[i + 1] += out2[i + 1];
+    }
   }
 }
 

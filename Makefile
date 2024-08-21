@@ -11,6 +11,7 @@ CPP_SOURCES = main.cpp \
 	lib/tapehead.cpp \
 	lib/balance2.cpp \
 	lib/lfo.cpp \
+	lib/lpf_oberheim.cpp \
 	lib/fverb2.cpp \
 	lib/chords.cpp \
 	lib/compressor.cpp

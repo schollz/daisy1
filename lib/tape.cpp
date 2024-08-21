@@ -1,22 +1,30 @@
 
 #include "tape.h"
 
+// Reset can be used to change between stereo and mono
+void Tape::Reset(CircularBuffer &buf_circular, float sample_rate,
+                 bool is_stereo) {
+  Init(endpoints, buf_circular, sample_rate, is_stereo);
+}
+
 void Tape::Init(size_t endpoints[2], CircularBuffer &buf_circular,
                 float sample_rate, bool is_stereo) {
   this->is_stereo = is_stereo;
   this->sample_rate = sample_rate;
   for (size_t i = 0; i < 2; i++) {
+    // make sure they are divisible by 2 (for stereo)
     this->endpoints[i] = (endpoints[i] / 2) * 2;
   }
   buffer_min = this->endpoints[0] + buf_circular.GetSize();
-  buffer_max = buffer_min + 7 * (this->endpoints[1] - buffer_min) / 8;
+  buffer_max = buffer_min + (7 * (this->endpoints[1] - buffer_min) / 8);
   if (is_stereo) {
     // make sure it is a power of two
     buffer_max = (buffer_max / 2) * 2;
     buffer_min = (buffer_min / 2) * 2;
   }
-  buffer_start = buffer_min;
-  SetTapeEnd(buffer_end);
+  // set buffer start/end
+  SetTapeStart(buffer_min);
+  SetTapeEnd(buffer_max);
   head_play_last_pos = buffer_start;
   head_rec.pos = buffer_start;
   head_rec.SetState(TapeHead::STOPPED);
@@ -213,9 +221,7 @@ void Tape::PlayingStop() { PlayingFadeOut(); }
 void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
                    float *out_main, size_t size_interleaved,
                    uint32_t current_time) {
-  /** <recording> **/
-  // recording won't affect the output buffer
-  // and will only update the tape buffer (buf_tape)
+  /** <flags> **/
   if (flags.test(DO_ERASE)) {
     // erase current tape buffer
     for (size_t i = endpoints[0]; i < endpoints[1]; i++) {
@@ -223,22 +229,24 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
     }
     flags.reset(DO_ERASE);
   }
+  /** </flags> **/
+
+  /** <recording> **/
+  // recording won't affect the output buffer
+  // and will only update the tape buffer (buf_tape)
   if (head_rec.IsState(TapeHead::STARTING)) {
     // reset the recording head to the buffer start
     head_rec.pos = buffer_start;
     // prepend the buffer start with all the samples in the circular buffer
     size_t circular_size = buf_circular.GetSize();
     for (size_t i = 0; i < circular_size; i++) {
-      float fade_in = cosf((1.0f - ((float)i / ((float)circular_size))) *
-                           3.1415926535 / 2.0);
-      buf_tape[buffer_start - circular_size + i - 1] =
-          buf_circular.Read(i) * fade_in;
+      buf_tape[buffer_start - circular_size + i - 1] = buf_circular.Read(i);
     }
     head_rec.SetState(TapeHead::STARTED);
   }
   if (head_rec.IsState(TapeHead::STARTED) ||
       head_rec.IsState(TapeHead::STOPPING)) {
-    for (size_t i = 0; i < size_interleaved; i += (is_stereo ? 2 : 1)) {
+    for (size_t i = 0; i < size_interleaved; i += 2) {
       buf_tape[head_rec.pos] = in[i];
       if (is_stereo) {
         buf_tape[head_rec.pos + 1] = in[i + 1];
@@ -262,25 +270,31 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
   /** <playing> **/
   // playing is going to update the output buffer
   if (IsPlayingOrFading()) {
-    // need to add two extra interleaved samples for Hermite interpolation
-    size_t size_mono = size_interleaved / 2;
-    size_t input_size =
-        static_cast<size_t>(roundf(static_cast<float>(size_mono) * rate)) + 2;
+    // de-interleaved audio is half the size of interleaved
+    size_t size_deinterleaved = size_interleaved / 2;
+
+    // size of input audio is determined by rate,
+    // with two extra samples for Hermite interpolation
+    size_t input_size = static_cast<size_t>(roundf(
+                            static_cast<float>(size_deinterleaved) * rate)) +
+                        2;
 
     // buffers before resampling
     float outl1[input_size];
     float outr1[input_size];
 
-    // buffers after resampling
-    float outl2[size_mono];
-    float outr2[size_mono];
+    // buffers after resampling, before interleaving
+    float outl2[size_deinterleaved];
+    float outr2[size_deinterleaved];
+
+    // peek tracking
     size_t head_play_last_pos_before_peek = 0;
     bool head_play_last_pos_is_set = false;
 
     memset(outl1, 0, sizeof(outl1));
+    memset(outr1, 0, sizeof(outr1));
     memset(outl2, 0, sizeof(outl2));
-    memset(outl1, 0, sizeof(outr1));
-    memset(outl2, 0, sizeof(outr2));
+    memset(outr2, 0, sizeof(outr2));
 
     // for each play head, update the output buffer
     // some heads may be stopped and they will be skipped initially
@@ -325,7 +339,7 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
             if (is_stereo) {
               outr1[i] += buf_tape[head_play[head].pos + 1] * fade_in;
             }
-            // Move() will move 2 for stereo, 1 for mono
+            // .Move() will move 2 for stereo, 1 for mono
             head_play[head].Move();
             continue;
           }
@@ -337,6 +351,7 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
             outr1[i] += buf_tape[head_play[head].pos + 1];
           }
           head_play_last_pos = head_play[head].pos;
+          // .Move() will move 2 for stereo, 1 for mono
           head_play[head].Move();
           // if the head is at the buffer end, cut it
           // PlayingCut will automatically transition the current
@@ -399,20 +414,30 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
       }
     }
 
-    // apply resampling
-    resampler_l.Process(outl1, input_size, outl2, size_mono);
+    // apply resampling which will resize `out*1` into `out*2`
+    // where `out*2` is the correct number of samples to send out
+    resampler_l.Process(outl1, input_size, outl2, size_deinterleaved);
     if (is_stereo) {
-      resampler_r.Process(outr1, input_size, outr2, size_mono);
+      resampler_r.Process(outr1, input_size, outr2, size_deinterleaved);
     }
 
-    // TODO: apply filter
+    // apply filter to both channels
+    // lpf[0].Process(size_deinterleaved, outl2);
+    // if (is_stereo) {
+    //   lpf[1].Process(size_deinterleaved, outr2);
+    // }
 
     // apply panning
     lfos[TAPE_LFO_PAN].Update(current_time);
     if (is_stereo) {
-      Balance2_Process(outl2, outr2, size_mono, lfos[TAPE_LFO_PAN].Value());
+      Balance2_Process(outl2, outr2, size_deinterleaved,
+                       lfos[TAPE_LFO_PAN].Value());
     } else {
-      Pan2_Process(outl2, outr2, size_mono, lfos[TAPE_LFO_PAN].Value());
+      // mono panning to stereo - in this case
+      // `outr2` is empty, and it is going to be
+      // balanced and set to whatever is in `outl2`
+      Pan2_Process(outl2, outr2, size_deinterleaved,
+                   lfos[TAPE_LFO_PAN].Value());
     }
 
     // re-interleave and add the output to the main

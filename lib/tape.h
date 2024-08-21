@@ -36,6 +36,7 @@ class Tape {
 
   void Init(size_t endpoints[2], CircularBuffer &buf_circular,
             float sample_rate, bool is_stereo);
+  void Reset(CircularBuffer &buf_circular, float sample_rate, bool is_stereo);
   void RecordingStart();
   void RecordingStop();
   void RecordingErase();

@@ -3,10 +3,10 @@
 #include <bitset>
 #include <cstring>
 
-#include "lpf_oberheim.h"
 #include "balance2.h"
 #include "circularbuffer.h"
 #include "lfo.h"
+#include "lpf_sallenkey_onepole.h"
 #include "resampler.h"
 #include "tapehead.h"
 #define TAPE_PLAY_HEADS 3
@@ -66,7 +66,7 @@ class Tape {
   float rate = 1.0f;
   Resampler resampler;
   size_t crossfade_limit = 1000;
-  OberheimLPF lpf[2];
+  SallenKeyOnePoleLPF lpf[2];
 };
 
 #endif

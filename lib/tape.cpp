@@ -251,8 +251,8 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
           SetTapeEnd(head_rec.pos);
         }
       } else if (head_rec.IsState(TapeHead::STOPPING)) {
-        // continue to write until 2*crossfade_limit away from the buffer end
-        if (head_rec.state_time >= 2 * crossfade_limit) {
+        // continue to write until crossfade_limit away from the buffer end
+        if (head_rec.state_time >= crossfade_limit) {
           head_rec.SetState(TapeHead::STOPPED);
         }
       }
@@ -265,11 +265,13 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
     // need to add two extra interleaved samples for Hermite interpolation
     size_t size_mono = size_interleaved / 2;
     size_t input_size =
-        static_cast<size_t>(roundf(static_cast<float>(size_mono) * rate)) +
-        (is_stereo ? 4 : 2);
+        static_cast<size_t>(roundf(static_cast<float>(size_mono) * rate)) + 2;
 
+    // buffers before resampling
     float outl1[input_size];
     float outr1[input_size];
+
+    // buffers after resampling
     float outl2[size_mono];
     float outr2[size_mono];
     size_t head_play_last_pos_before_peek = 0;

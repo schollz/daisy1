@@ -40,6 +40,7 @@ DaisyPod hw;
 DaisySeed daisyseed;
 LFO lfotest;
 I2CHandle i2c;
+Chords chords;
 
 float reverb_wet_dry = 0;
 
@@ -66,7 +67,6 @@ void writeNoteCV(uint8_t note) {
   i2c.TransmitBlocking(0x60, data, 2, 1000);
 }
 
-size_t acrostic_i = notes.size() - 1;
 
 #define NUM_LOOPS 6
 float bpm_set = 30.0f;
@@ -179,7 +179,7 @@ int main(void) {
   hw.Init();
   daisyseed.StartLog(true);
 
-  regenerateChordProgression();
+  chords.Regenerate(true);
 
   // initialize i2c
 
@@ -469,7 +469,7 @@ void Controls(float audio_level) {
     bool new_recording = false;
     if (measure_beat_count % 4 == 0) {
       if (measure_beat_count % 12 == 0) {
-        regenerateChordProgression();
+        chords.Regenerate((rand() % 2) < 1);
       }
       // for (size_t i = 0; i < NUM_LOOPS; i++) {
       //   if (tape[i].IsPlayingOrFading()) {
@@ -490,8 +490,8 @@ void Controls(float audio_level) {
         new_recording = true;
       }
     }
-    int note_to_play = chord_note_sequence[measure_beat_count % 12] +
-                       chord_note_octaves[(measure_beat_count / 4) % 3];
+    int note_to_play = chords.note_sequence[measure_beat_count % 12] +
+                       chords.note_octaves[(measure_beat_count / 4) % 3];
     daisyseed.PrintLine("[%d] measure: %d, beat: %d, note: %d", new_recording,
                         measure_beat_count / 4, measure_beat_count % 4,
                         note_to_play);

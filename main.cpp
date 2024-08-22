@@ -133,11 +133,7 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
   // passthrough
   for (size_t i = 0; i < size; i += 2) {
     out[i] = (0.5 * in[i]) + audiocallback_bufout[i];
-    if (stereo_mode) {
-      out[i + 1] = (0.5 * in[i + 1]) + audiocallback_bufout[i + 1];
-    } else {
-      out[i + 1] = out[i];
-    }
+    out[i + 1] = (0.5 * in[i + 1]) + audiocallback_bufout[i + 1];
   }
 
   // de-interleave
@@ -325,6 +321,7 @@ int main(void) {
                            (i + 1) * MAX_SIZE / NUM_LOOPS};
     tape[i].Init(endpoints, tape_circular_buffer, AUDIO_SAMPLE_RATE,
                  stereo_mode);
+    daisyseed.PrintLine("tape: %d, %d-%d", i, endpoints[0], endpoints[1]);
   }
 
   // // calibrate dac values
@@ -466,8 +463,9 @@ void Controls(float audio_level) {
     knobs_last[1] = knobs_current[1];
     reverb_wet_dry = hw.knob2.Process();
     if (tape[loop_index].IsPlayingOrFading()) {
-      // daisyseed.PrintLine("setting rate to %2.1f", new_rate);
-      // tape[loop_index].SetRate(hw.knob2.Process() * 2);
+      float new_rate = hw.knob2.Process() * 2;
+      daisyseed.PrintLine("setting rate to %2.1f", new_rate);
+      tape[loop_index].SetRate(hw.knob2.Process() * 2);
     }
     controls_changed = true;
   }

@@ -23,7 +23,7 @@ int main() {
     // need to add two extra samples for Hermite interpolation
     for (size_t i = 0; i < input_size; ++i) {
       inputs[i] =
-          0.5f * std::sin(2.0f * M_PI * 0.02f * (i + t * (input_size - 2)));
+          0.5f * std::sin(2.0f * M_PI * 0.005f * (i + t * (input_size - 2)));
       if (i >= input_size - 2) {
         // don't include peeked samples
         continue;

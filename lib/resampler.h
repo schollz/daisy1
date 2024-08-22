@@ -5,62 +5,7 @@
 #include <stdexcept>
 #include <vector>
 
-class BiquadFilter {
- public:
-  BiquadFilter()
-      : a0(1.0),
-        a1(0.0),
-        a2(0.0),
-        b0(1.0),
-        b1(0.0),
-        b2(0.0),
-        z1(0.0),
-        z2(0.0) {}
-
-  // Design a low-pass filter with given sampling frequency and cutoff frequency
-  void DesignLowPass(float sampling_frequency, float cutoff_frequency) {
-    float omega = 2.0f * M_PI * cutoff_frequency / sampling_frequency;
-    float alpha = sin(omega) / 2.0f * sqrt(2.0f);
-
-    float cos_omega = cos(omega);
-    b0 = (1.0f - cos_omega) / 2.0f;
-    b1 = 1.0f - cos_omega;
-    b2 = (1.0f - cos_omega) / 2.0f;
-    a0 = 1.0f + alpha;
-    a1 = -2.0f * cos_omega;
-    a2 = 1.0f - alpha;
-
-    // Normalize the coefficients
-    b0 /= a0;
-    b1 /= a0;
-    b2 /= a0;
-    a1 /= a0;
-    a2 /= a0;
-  }
-
-  // Apply the filter to the input buffer
-  void Process(float* input_buffer, size_t input_size) {
-    float z1_save = z1;
-    float z2_save = z2;
-    for (size_t i = 0; i < input_size; ++i) {
-      float output = b0 * input_buffer[i] + z1;
-      z1 = b1 * input_buffer[i] + z2 - a1 * output;
-      z2 = b2 * input_buffer[i] - a2 * output;
-      input_buffer[i] = output;
-      if (i == input_size - 2) {
-        z1_save = z1;
-        z2_save = z2;
-      }
-    }
-    z1 = z1_save;
-    z2 = z2_save;
-  }
-
- private:
-  float a0, a1, a2;
-  float b0, b1, b2;
-  float z1, z2;  // Delay elements
-};
+#include "lpf_biquad.h"
 
 class SampleRateConverter {
  public:
@@ -82,14 +27,16 @@ class SampleRateConverter {
       } else {
         cutoff = 0.5f * cutoff_rate;
       }
-      biquad1.DesignLowPass(48000, cutoff * 48000);
-      // biquad2.DesignLowPass(48000, cutoff * 48000);
+      biquad1.SetCutoff(cutoff * 48000);
     }
 
     // Apply filter before processing
     float input_buffer_copy[input_size];
     for (size_t i = 0; i < input_size; i++) {
       input_buffer_copy[i] = input_buffer[i];
+    }
+    if (cutoff_rate > 1) {
+      biquad1.ProcessMinus2(input_buffer_copy, input_size);
     }
 
     // Resample
@@ -98,7 +45,10 @@ class SampleRateConverter {
     for (size_t i = 0; i < output_size; i++) {
       output_buffer[i] = output[i];
     }
-    biquad1.Process(output_buffer, output_size);
+
+    if (cutoff_rate < 1) {
+      biquad1.Process(output_buffer, output_size);
+    }
   }
 
   // Process an input buffer and return a vector of output samples
@@ -139,8 +89,7 @@ class SampleRateConverter {
   }
 
  private:
-  BiquadFilter biquad1;
-  BiquadFilter biquad2;
+  Biquad biquad1 = Biquad(48000);
   float cutoff_rate = 0;
 
   // 4-point, 3rd-order Hermite (x-form) interpolation

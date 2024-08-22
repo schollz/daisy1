@@ -153,7 +153,7 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
 #endif
 
 #ifdef INCLUDE_COMPRESSOR
-  compressor.Process(AUDIO_BLOCK_SIZE, inl, inr, outl, outr);
+  compressor.Process(AUDIO_BLOCK_SIZE, outl, outr);
 #endif
 
   // re-interleave

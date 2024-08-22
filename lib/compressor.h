@@ -171,8 +171,7 @@ class Compressor {
   //   ui_interface->closeBox();
   // }
 
-  void Process(int count, float* input0, float* input1, float* output0,
-               float* output1) {
+  void Process(int count, float* input0, float* input1) {
     int iSlow0 = int(float(fCheckbox0));
     float fSlow1 = std::max<float>(fConst0, 0.001f * float(fHslider0));
     float fSlow2 = 0.5f * fSlow1;
@@ -208,7 +207,7 @@ class Compressor {
                  fSlow4 * fRec0[1];
       float fTemp6 = std::pow(1e+01f, 0.05f * fRec0[0]);
       float fTemp7 = fTemp1 * fTemp6;
-      output0[i0] = float(((iSlow0) ? fTemp0 : fSlow13 * fTemp7));
+      input0[i0] = float(((iSlow0) ? fTemp0 : fSlow13 * fTemp7));
       float fTemp8 = fTemp3 * fTemp6;
       float fTemp9 = std::fabs(std::fabs(fTemp7) + std::fabs(fTemp8));
       float fTemp10 = ((fTemp9 > fRec3[1]) ? fSlow11 : fSlow9);
@@ -223,7 +222,7 @@ class Compressor {
       fHbargraph0 = float(
           2e+01f * std::log10(std::max<float>(
                        1.1754944e-38f, std::pow(1e+01f, 0.05f * fRec2[0]))));
-      output1[i0] = float(((iSlow0) ? fTemp2 : fSlow13 * fTemp8));
+      input1[i0] = float(((iSlow0) ? fTemp2 : fSlow13 * fTemp8));
       fRec1[1] = fRec1[0];
       fRec0[1] = fRec0[0];
       fRec3[1] = fRec3[0];

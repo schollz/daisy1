@@ -464,7 +464,6 @@ void Controls(float audio_level) {
     reverb_wet_dry = hw.knob2.Process();
     if (tape[loop_index].IsPlayingOrFading()) {
       float new_rate = hw.knob2.Process() * 2;
-      daisyseed.PrintLine("setting rate to %2.1f", new_rate);
       tape[loop_index].SetRate(hw.knob2.Process() * 2);
     }
     controls_changed = true;
@@ -510,11 +509,12 @@ void Controls(float audio_level) {
       if (controls_changed || true) {
         daisyseed.PrintLine(
             "%d, knob1=%2.3f knob2=%2.3f, enc=%d, usage=%2.1f%% per %d "
-            "samples, pan=%2.2f, amp=%2.2f, lpf=%2.2f, audio=%2.4f",
+            "samples, rate=%2.3f, pan=%2.2f, amp=%2.2f, lpf=%2.2f, audio=%2.4f",
             loop_index, knobs_current[0], knobs_current[1], encoder_increment,
             (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f,
-            audiocallback_sample_num, tape[0].lfos[0].Value(),
-            tape[0].lfos[1].Value(), tape[0].lfos[2].Value(), audio_level);
+            audiocallback_sample_num, tape[loop_index].GetRate(),
+            tape[loop_index].lfos[0].Value(), tape[loop_index].lfos[1].Value(),
+            tape[loop_index].lfos[2].Value(), audio_level);
         controls_changed = false;
       }
       lastPrintTime = currentTime;

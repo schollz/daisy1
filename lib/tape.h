@@ -62,6 +62,7 @@ class Tape {
   void SetPhaseStart(float phase);  // phase is 0-1
   void SetPhaseEnd(float phase);
   float GetPhase();
+  float GetRate();
 
  private:
   size_t buffer_min = 0;

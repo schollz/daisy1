@@ -29,7 +29,7 @@ class LPF {
   float fRec3[2];
 
  public:
-  mydsp() {}
+  LPF() {}
 
   int getNumInputs() { return 1; }
   int getNumOutputs() { return 1; }

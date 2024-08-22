@@ -180,7 +180,7 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
 
 int main(void) {
   hw.Init();
-  daisyseed.StartLog(true);
+  daisyseed.StartLog(false);
 
   chords.Regenerate(true);
 
@@ -457,15 +457,14 @@ void Controls(float audio_level) {
     tape[loop_index].lfos[2].SetValue(knobs_current[0]);
     // tape[loop_index].SetPan(knobs_current[0] * 2.0f - 1.0f);
     controls_changed = true;
+    if (tape[loop_index].IsPlayingOrFading()) {
+      tape[loop_index].SetRate(hw.knob1.Process() * 2);
+    }
   }
   knobs_current[1] = roundf(hw.knob2.Process() * 500) / 500;
   if (knobs_current[1] != knobs_last[1]) {
     knobs_last[1] = knobs_current[1];
     reverb_wet_dry = hw.knob2.Process();
-    // if (tape[loop_index].IsPlayingOrFading()) {
-    //   float new_rate = hw.knob2.Process() * 2;
-    //   tape[loop_index].SetRate(hw.knob2.Process() * 2);
-    // }
     controls_changed = true;
   }
 

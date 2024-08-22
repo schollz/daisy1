@@ -9,6 +9,7 @@
 
 class LPF {
  private:
+  bool initialized = false;
   int fSampleRate;
   float fConst0;
   float fConst1;
@@ -20,6 +21,7 @@ class LPF {
 
  public:
   LPF() {}
+  LPF(int sample_rate) { init(sample_rate); }
 
   //   void metadata(Meta* m) {
   //     m->declare("author", "Eric Tarr");
@@ -76,8 +78,11 @@ class LPF {
   }
 
   void init(int sample_rate) {
-    classInit(sample_rate);
-    instanceInit(sample_rate);
+    if (!initialized) {
+      classInit(sample_rate);
+      instanceInit(sample_rate);
+      initialized = true;
+    }
   }
 
   void instanceInit(int sample_rate) {

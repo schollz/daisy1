@@ -422,12 +422,15 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
     }
 
     // apply filter to both channels
-    float lpf_val = lfos[TAPE_LFO_LPF].Value();
-    lpf[0].SetFreq(lpf_val);
-    lpf[0].Process(size_deinterleaved, outl2);
-    if (is_stereo) {
-      lpf[1].SetFreq(lpf_val);
-      lpf[1].Process(size_deinterleaved, outr2);
+    if (!is_stereo) {
+      // note: CPU too taxing to do on many stereo loops
+      float lpf_val = lfos[TAPE_LFO_LPF].Value();
+      lpf[0].SetFreq(lpf_val);
+      lpf[0].Process(size_deinterleaved, outl2);
+      if (is_stereo) {
+        lpf[1].SetFreq(lpf_val);
+        lpf[1].Process(size_deinterleaved, outr2);
+      }
     }
 
     // apply panning

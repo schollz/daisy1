@@ -39,7 +39,7 @@ uint8_t DMA_BUFFER_MEM_SECTION buffer_spi[4];
 using namespace daisy;
 using namespace daisysp;
 
-bool stereo_mode = false;
+bool stereo_mode = true;
 DaisyPod hw;
 DaisySeed daisyseed;
 LFO lfotest;
@@ -462,10 +462,10 @@ void Controls(float audio_level) {
   if (knobs_current[1] != knobs_last[1]) {
     knobs_last[1] = knobs_current[1];
     reverb_wet_dry = hw.knob2.Process();
-    if (tape[loop_index].IsPlayingOrFading()) {
-      float new_rate = hw.knob2.Process() * 2;
-      tape[loop_index].SetRate(hw.knob2.Process() * 2);
-    }
+    // if (tape[loop_index].IsPlayingOrFading()) {
+    //   float new_rate = hw.knob2.Process() * 2;
+    //   tape[loop_index].SetRate(hw.knob2.Process() * 2);
+    // }
     controls_changed = true;
   }
 

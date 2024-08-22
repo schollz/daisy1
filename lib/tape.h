@@ -6,12 +6,13 @@
 #include "balance2.h"
 #include "circularbuffer.h"
 #include "lfo.h"
+// #include "lpf_diodeladder.h"
+// #include "lpf_korg.h"
+// #include "lpf_oberheim.h"
 #include "lpf_sallenkey_onepole.h"
 #include "resampler.h"
 #include "tapehead.h"
 #define TAPE_PLAY_HEADS 3
-
-#define CROSSFADE_PREROLL 4800
 
 class Tape {
  public:
@@ -34,7 +35,9 @@ class Tape {
   std::bitset<TAPE_FLAG_COUNT> flags;
   LFO lfos[TAPE_LFO_COUNT];
 
-  void Init(size_t start, size_t max, float sample_rate);
+  void Init(size_t endpoints[2], CircularBuffer &buf_circular,
+            float sample_rate, bool is_stereo);
+  void Reset(CircularBuffer &buf_circular, float sample_rate, bool is_stereo);
   void RecordingStart();
   void RecordingStop();
   void RecordingErase();
@@ -59,14 +62,19 @@ class Tape {
   void SetPhaseStart(float phase);  // phase is 0-1
   void SetPhaseEnd(float phase);
   float GetPhase();
+  float GetRate();
 
  private:
   size_t buffer_min = 0;
   float pan = 0;
   float rate = 1.0f;
-  Resampler resampler;
+  SampleRateConverter resampler_l;
+  SampleRateConverter resampler_r;
   size_t crossfade_limit = 1000;
-  SallenKeyOnePoleLPF lpf[2];
+  LPF lpf[2];
+  bool is_stereo = false;
+  size_t endpoints[2];
+  float sample_rate;
 };
 
 #endif

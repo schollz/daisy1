@@ -14,6 +14,14 @@ class SampleRateConverter {
     initialized = false;
   }
 
+  void Process(const float* input_buffer, size_t input_size,
+               float* output_buffer, size_t output_size) {
+    std::vector<float> output = Process(input_buffer, input_size, output_size);
+    for (size_t i = 0; i < output_size; i++) {
+      output_buffer[i] = output[i];
+    }
+  }
+
   // Process an input buffer and return a vector of output samples
   std::vector<float> Process(const float* input_buffer, size_t input_size,
                              size_t output_size) {
@@ -66,42 +74,6 @@ class SampleRateConverter {
   bool initialized =
       false;          // Flag to check if the first sample has been initialized
   float last_sample;  // Last sample from the previous buffer
-};
-
-// Reasmpler works on interleaved stereo audio
-class Resampler {
- public:
-  Resampler(){};
-  void Process(const float* input_buffer, size_t input_size,
-               float* output_buffer, size_t output_size) {
-    std::vector<float> input_left(input_size / 2);
-    std::vector<float> input_right(input_size / 2);
-    std::vector<float> output_left(output_size / 2);
-    std::vector<float> output_right(output_size / 2);
-
-    // Deinterleave the input buffer, which should have 2 extra samples for
-    // Hermite interpolation
-    for (size_t i = 0; i < input_size; i += 2) {
-      input_left[i / 2] = input_buffer[i];
-      input_right[i / 2] = input_buffer[i + 1];
-    }
-
-    // Process the left and right channels
-    output_left = converter_left.Process(input_left.data(), input_size / 2,
-                                         output_size / 2);
-    output_right = converter_right.Process(input_right.data(), input_size / 2,
-                                           output_size / 2);
-
-    // Interleave the output buffer
-    for (size_t i = 0; i < output_size; i += 2) {
-      output_buffer[i] = output_left[i / 2];
-      output_buffer[i + 1] = output_right[i / 2];
-    }
-  }
-
- private:
-  SampleRateConverter converter_left;
-  SampleRateConverter converter_right;
 };
 
 #endif  // RESAMPLER_H_

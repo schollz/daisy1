@@ -29,6 +29,7 @@ uint8_t DMA_BUFFER_MEM_SECTION buffer_spi[4];
 #define INCLUDE_AUDIO_PROFILING 1
 #define AUDIO_BLOCK_SIZE 128
 #define AUDIO_SAMPLE_RATE 48000
+#define CROSSFADE_PREROLL 4800
 #define MAX_SECONDS 150
 #define MAX_SIZE                     \
   (AUDIO_SAMPLE_RATE * MAX_SECONDS * \
@@ -38,6 +39,7 @@ uint8_t DMA_BUFFER_MEM_SECTION buffer_spi[4];
 using namespace daisy;
 using namespace daisysp;
 
+bool stereo_mode = true;
 DaisyPod hw;
 DaisySeed daisyseed;
 LFO lfotest;
@@ -314,16 +316,12 @@ int main(void) {
                            AUDIO_SAMPLE_RATE / AUDIO_BLOCK_SIZE);
 
   // intialize tapes
-  daisyseed.PrintLine("time per loop: %2.1f seconds",
-                      (float)MAX_SECONDS / NUM_LOOPS);
   for (size_t i = 0; i < NUM_LOOPS; i++) {
-    size_t seconds_start = (i * (MAX_SECONDS - 1) / NUM_LOOPS) + 4;
-    size_t seconds_end = ((i + 1) * (MAX_SECONDS - 1) / NUM_LOOPS);
-    tape[i].Init(AUDIO_SAMPLE_RATE * 2 * seconds_start,
-                 AUDIO_SAMPLE_RATE * 2 * seconds_end, AUDIO_SAMPLE_RATE);
-    daisyseed.PrintLine("tape[%d] start=%d end=%d (%d)", i,
-                        tape[i].buffer_start / 1000, tape[i].buffer_end / 1000,
-                        MAX_SIZE / 1000);
+    size_t endpoints[2] = {i * MAX_SIZE / NUM_LOOPS,
+                           (i + 1) * MAX_SIZE / NUM_LOOPS};
+    tape[i].Init(endpoints, tape_circular_buffer, AUDIO_SAMPLE_RATE,
+                 stereo_mode);
+    daisyseed.PrintLine("tape: %d, %d-%d", i, endpoints[0], endpoints[1]);
   }
 
   // // calibrate dac values
@@ -464,10 +462,10 @@ void Controls(float audio_level) {
   if (knobs_current[1] != knobs_last[1]) {
     knobs_last[1] = knobs_current[1];
     reverb_wet_dry = hw.knob2.Process();
-    if (tape[loop_index].IsPlayingOrFading()) {
-      // daisyseed.PrintLine("setting rate to %2.1f", new_rate);
-      // tape[loop_index].SetRate(hw.knob2.Process() * 2);
-    }
+    // if (tape[loop_index].IsPlayingOrFading()) {
+    //   float new_rate = hw.knob2.Process() * 2;
+    //   tape[loop_index].SetRate(hw.knob2.Process() * 2);
+    // }
     controls_changed = true;
   }
 
@@ -511,11 +509,12 @@ void Controls(float audio_level) {
       if (controls_changed || true) {
         daisyseed.PrintLine(
             "%d, knob1=%2.3f knob2=%2.3f, enc=%d, usage=%2.1f%% per %d "
-            "samples, pan=%2.2f, amp=%2.2f, lpf=%2.2f, audio=%2.4f",
+            "samples, rate=%2.3f, pan=%2.2f, amp=%2.2f, lpf=%2.2f, audio=%2.4f",
             loop_index, knobs_current[0], knobs_current[1], encoder_increment,
             (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f,
-            audiocallback_sample_num, tape[0].lfos[0].Value(),
-            tape[0].lfos[1].Value(), tape[0].lfos[2].Value(), audio_level);
+            audiocallback_sample_num, tape[loop_index].GetRate(),
+            tape[loop_index].lfos[0].Value(), tape[loop_index].lfos[1].Value(),
+            tape[loop_index].lfos[2].Value(), audio_level);
         controls_changed = false;
       }
       lastPrintTime = currentTime;

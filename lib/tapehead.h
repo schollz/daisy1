@@ -10,6 +10,7 @@ class TapeHead {
   TapeHead();
   void Move();
   void SetState(State new_state);
+  void SetStereo(bool stereo);
   void Peek();
   void UnPeek();
   bool IsState(State check_state);
@@ -26,6 +27,7 @@ class TapeHead {
   size_t state_time_last = 0;
   Direction direction_last;
   State state_last;
+  bool is_stereo = false;
 };
 
 #endif

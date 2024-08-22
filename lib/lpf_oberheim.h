@@ -9,7 +9,7 @@
 
 static float mydsp_faustpower2_f(float value) { return value * value; }
 
-class OberheimLPF {
+class LPF {
  private:
   int fSampleRate;
   float fConst0;
@@ -23,7 +23,7 @@ class OberheimLPF {
   float fRec2[2];
 
  public:
-  OberheimLPF() {}
+  LPF() {}
 
   int getNumInputs() { return 1; }
   int getNumOutputs() { return 1; }

@@ -4,10 +4,11 @@ TapeHead::TapeHead() {
   pos = 0;
   direction = FORWARD;
   state = STOPPED;
+  is_stereo = false;
 }
 
 void TapeHead::Move() {
-  pos += direction * 2;  // *2 is for stereo
+  pos += direction * (is_stereo ? 2 : 1);
   state_time++;
 }
 
@@ -37,6 +38,8 @@ void TapeHead::SetState(State new_state) {
   state = new_state;
   state_time = 0;
 }
+
+void TapeHead::SetStereo(bool stereo) { is_stereo = stereo; }
 
 bool TapeHead::IsState(State check_state) { return state == check_state; }
 

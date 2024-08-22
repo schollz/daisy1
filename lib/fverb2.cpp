@@ -1,7 +1,5 @@
 #include "fverb2.h"
 
-#define FAUSTFLOAT float
-
 #include <math.h>
 
 #include <algorithm>
@@ -21,25 +19,25 @@ int fSampleRate;
 float fConst0;
 float fConst1;
 float fConst2;
-FAUSTFLOAT fHslider0;
+float fHslider0;
 float fConst3;
 float fRec8[2];
-FAUSTFLOAT fHslider1;
+float fHslider1;
 float fConst4;
 float fRec12[2];
-FAUSTFLOAT fHslider2;
+float fHslider2;
 float fRec15[2];
-FAUSTFLOAT fHslider3;
+float fHslider3;
 float fRec20[2];
-FAUSTFLOAT fHslider4;
+float fHslider4;
 float fRec24[2];
-FAUSTFLOAT fHslider5;
+float fHslider5;
 float fRec25[2];
-FAUSTFLOAT fHslider6;
+float fHslider6;
 float fRec27[2];
 int IOTA0;
 
-FAUSTFLOAT fHslider7;
+float fHslider7;
 float fConst5;
 float fRec28[2];
 float fRec26[2];
@@ -57,14 +55,14 @@ float DSY_SDRAM_BSS fVec4[2048];
 int iConst9;
 float fRec13[2];
 int iConst10;
-FAUSTFLOAT fHslider8;
+float fHslider8;
 float fRec29[2];
 float DSY_SDRAM_BSS fVec5[131072];
-FAUSTFLOAT fHslider9;
+float fHslider9;
 float fRec36[2];
 float fConst11;
 float fRec35[2];
-FAUSTFLOAT fHslider10;
+float fHslider10;
 float fRec37[2];
 float fConst12;
 float fRec30[2];
@@ -207,29 +205,29 @@ void instanceConstants(int sample_rate) {
 }
 
 void instanceResetUserInterface() {
-  //   fHslider0 = FAUSTFLOAT(5.5e+03f);
-  //   fHslider1 = FAUSTFLOAT(7e+01f);
-  //   fHslider2 = FAUSTFLOAT(62.5f);
-  //   fHslider3 = FAUSTFLOAT(75.0f);
-  //   fHslider4 = FAUSTFLOAT(1e+02f);
-  //   fHslider5 = FAUSTFLOAT(1e+04f);
-  //   fHslider6 = FAUSTFLOAT(1e+02f);
-  //   fHslider7 = FAUSTFLOAT(0.0f);
-  //   fHslider8 = FAUSTFLOAT(5e+01f);
-  //   fHslider9 = FAUSTFLOAT(1.0f);
-  //   fHslider10 = FAUSTFLOAT(0.5f);
+  //   fHslider0 = float(5.5e+03f);
+  //   fHslider1 = float(7e+01f);
+  //   fHslider2 = float(62.5f);
+  //   fHslider3 = float(75.0f);
+  //   fHslider4 = float(1e+02f);
+  //   fHslider5 = float(1e+04f);
+  //   fHslider6 = float(1e+02f);
+  //   fHslider7 = float(0.0f);
+  //   fHslider8 = float(5e+01f);
+  //   fHslider9 = float(1.0f);
+  //   fHslider10 = float(0.5f);
 
-  fHslider0 = FAUSTFLOAT(5.5e+03f);
-  fHslider1 = FAUSTFLOAT(70.0f);
-  fHslider2 = FAUSTFLOAT(62.5f);
-  fHslider3 = FAUSTFLOAT(75.0f);
-  fHslider4 = FAUSTFLOAT(1e+02f);
-  fHslider5 = FAUSTFLOAT(1e+04f);
-  fHslider6 = FAUSTFLOAT(1e+02f);
-  fHslider7 = FAUSTFLOAT(50.0f);
-  fHslider8 = FAUSTFLOAT(70.0f);
-  fHslider9 = FAUSTFLOAT(0.7f);
-  fHslider10 = FAUSTFLOAT(0.5f);
+  fHslider0 = float(5.5e+03f);
+  fHslider1 = float(70.0f);
+  fHslider2 = float(62.5f);
+  fHslider3 = float(75.0f);
+  fHslider4 = float(1e+02f);
+  fHslider5 = float(1e+04f);
+  fHslider6 = float(1e+02f);
+  fHslider7 = float(50.0f);
+  fHslider8 = float(70.0f);
+  fHslider9 = float(0.7f);
+  fHslider10 = float(0.5f);
 }
 
 void instanceClear() {
@@ -592,14 +590,14 @@ void ProcessReverb(int count, float* input0, float* input1, float* output0,
     fRec3[IOTA0 & 32767] = fRec39 + fRec38[1];
     fRec4[IOTA0 & 8191] = fTemp0 * fRec40[0];
     fRec5[IOTA0 & 32767] = fTemp24;
-    output0[i0] = FAUSTFLOAT(
+    output0[i0] = float(
         0.6f *
         (fRec2[(IOTA0 - iConst28) & 32767] + fRec2[(IOTA0 - iConst27) & 32767] +
          fRec0[(IOTA0 - iConst26) & 32767] -
          (fRec1[(IOTA0 - iConst25) & 16383] +
           fRec5[(IOTA0 - iConst24) & 32767] + fRec4[(IOTA0 - iConst23) & 8191] +
           fRec3[(IOTA0 - iConst22) & 32767])));
-    output1[i0] = FAUSTFLOAT(
+    output1[i0] = float(
         0.6f *
         (fRec5[(IOTA0 - iConst35) & 32767] + fRec5[(IOTA0 - iConst34) & 32767] +
          fRec3[(IOTA0 - iConst33) & 32767] -

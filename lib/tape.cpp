@@ -276,7 +276,7 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
     // size of input audio is determined by rate,
     // with two extra samples for Hermite interpolation
     size_t input_size = static_cast<size_t>(roundf(
-                            static_cast<float>(size_deinterleaved) * rate)) +
+                            (static_cast<float>(size_deinterleaved)) * rate)) +
                         2;
 
     // buffers before resampling

@@ -22,9 +22,99 @@ class Compressor {
   float fRec3[2];
   float fRec2[2];
   float fHbargraph0;
+  float settings[8][5] = {{3, -35, 80, 400, 5}, {2, -30, 50, 200, 6},
+                          {4, -10, 30, 300, 3}, {6, -20, 10, 50, 12},
+                          {8, -15, 5, 100, 9},  {10, -40, 1, 100, 18},
+                          {12, -25, 2, 50, 10}, {20, 0, 1, 1, 0}};
+
+  float settings_current[5];
+  float settings_index = 0.0f;
 
  public:
-  Compressor() {}
+  Compressor() {
+    // Subtle Acoustic Guitar
+    //     Ratio: 3:1
+    //     Threshold: -35 dB
+    //     Attack: 80 ms
+    //     Release: 400 ms
+    //     Post-gain: 5 dB
+    // Soft Vocal Compression
+    //     Ratio: 2:1
+    //     Threshold: -30 dB
+    //     Attack: 50 ms
+    //     Release: 200 ms
+    //     Post-gain: 6 dB
+    // Master Bus Glue
+    //     Ratio: 4:1
+    //     Threshold: -10 dB
+    //     Attack: 30 ms
+    //     Release: 300 ms
+    //     Post-gain: 3 dB
+    // Punchy Drums
+    //     Ratio: 6:1
+    //     Threshold: -20 dB
+    //     Attack: 10 ms
+    //     Release: 50 ms
+    //     Post-gain: 12 dB
+    // Heavy Bass Compression
+    //     Ratio: 8:1
+    //     Threshold: -15 dB
+    //     Attack: 5 ms
+    //     Release: 100 ms
+    //     Post-gain: 9 dB
+    // Parallel Compression
+    //     Ratio: 10:1
+    //     Threshold: -40 dB
+    //     Attack: 1 ms
+    //     Release: 100 ms
+    //     Post-gain: 18 dB
+    // Aggressive Vocals
+    //     Ratio: 12:1
+    //     Threshold: -25 dB
+    //     Attack: 2 ms
+    //     Release: 50 ms
+    //     Post-gain: 10 dB
+    // Brickwall Limiting
+    //     Ratio: 20:1
+    //     Threshold: 0 dB
+    //     Attack: 1 ms
+    //     Release: 1 ms
+    //     Post-gain: 0 dB
+  }
+
+  void Set(float index) {
+    // index is between 0 and 1
+    settings_index = index;
+    if (index <= 0) {
+      for (int i = 0; i < 5; i++) {
+        settings_current[i] = settings[0][i];
+      }
+    } else if (index >= 1) {
+      for (int i = 0; i < 5; i++) {
+        settings_current[i] = settings[5][i];
+      }
+    } else {
+      // interpolate
+      index = index * 5;
+      float index_floor = floor(index);
+      float index_ceil = ceil(index);
+      float index_frac = index - index_floor;
+      for (int i = 0; i < 5; i++) {
+        settings_current[i] = settings[int(index_floor)][i] * (1 - index_frac) +
+                              settings[int(index_ceil)][i] * index_frac;
+      }
+    }
+    // Ratio
+    fHslider3 = settings_current[0];
+    // Threshold
+    fHslider1 = settings_current[1];
+    // Attack
+    fHslider0 = settings_current[2];
+    // Release
+    fHslider2 = settings_current[3];
+    // Post-gain
+    fHslider4 = settings_current[4];
+  }
 
   int getNumInputs() { return 2; }
   int getNumOutputs() { return 2; }

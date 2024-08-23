@@ -58,7 +58,7 @@ int Chords::Regenerate(bool best_is_min) {
   int arr_best[CHORDS_IN_PROGRESSION][NOTES_IN_CHORD];
   int score_best = -1;
 
-  for (int iterations = 0; iterations < 100; iterations++) {
+  for (int iterations = 0; iterations < 10; iterations++) {
     // Shuffle each array
     for (int i = 0; i < CHORDS_IN_PROGRESSION; i++) {
       shuffleArray(progression_matrix[i], NOTES_IN_CHORD);

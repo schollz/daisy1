@@ -39,7 +39,7 @@ uint8_t DMA_BUFFER_MEM_SECTION buffer_spi[4];
 using namespace daisy;
 using namespace daisysp;
 
-bool stereo_mode = true;
+bool stereo_mode = false;
 DaisyPod hw;
 DaisySeed daisyseed;
 LFO lfotest;
@@ -133,8 +133,8 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
   // passthrough
   for (size_t i = 0; i < size; i += 2) {
     // TODO make a parameter for input gain
-    out[i] = (0.25 * in[i]) + audiocallback_bufout[i];
-    out[i + 1] = (0.25 * in[i + 1]) + audiocallback_bufout[i + 1];
+    out[i] = (0.15 * in[i]) + (0.15 * audiocallback_bufout[i]);
+    out[i + 1] = (0.15 * in[i + 1]) + (0.15 * audiocallback_bufout[i + 1]);
   }
 
   // de-interleave
@@ -461,9 +461,9 @@ void Controls(float audio_level) {
 #ifdef INCLUDE_COMPRESSOR
     compressor.Set(knobs_current[0]);
 #endif
-    if (tape[loop_index].IsPlayingOrFading()) {
-      tape[loop_index].SetRate(roundf(hw.knob1.Process() * 25) / 25);
-    }
+    // if (tape[loop_index].IsPlayingOrFading()) {
+    //   tape[loop_index].SetRate(roundf(hw.knob1.Process() * 25) / 25);
+    // }
   }
   knobs_current[1] = roundf(hw.knob2.Process() * 100) / 100;
   if (knobs_current[1] != knobs_last[1]) {
@@ -490,7 +490,7 @@ void Controls(float audio_level) {
         loop_index++;
         loop_index = loop_index % NUM_LOOPS;
       }
-      if (measure_beat_count / 4 < 6) {
+      if (measure_beat_count / 4 < 12 && (measure_beat_count / 4) % 2 == 0) {
         // prepare the next loop for recording
         if (tape[(loop_index + 1) % NUM_LOOPS].IsPlayingOrFading()) {
           tape[(loop_index + 1) % NUM_LOOPS].PlayingStop();

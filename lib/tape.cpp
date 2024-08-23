@@ -42,8 +42,8 @@ void Tape::Init(size_t endpoints[2], CircularBuffer &buf_circular,
       lfos[i].Init(period, -1, 1);
     } else if (i == TAPE_LFO_AMP) {
       float period = 10000.0f + static_cast<float>(rand() % 20000);
-      lfos[i].Init(period, 0.05, 0.9);
-    } else if (i == TAPE_LFO_COUNT) {
+      lfos[i].Init(period, 0.02, 0.9);
+    } else if (i == TAPE_LFO_LPF) {
       float period = 10000.0f + static_cast<float>(rand() % 20000);
       lfos[i].Init(period, 0.5, 0.9);
     }

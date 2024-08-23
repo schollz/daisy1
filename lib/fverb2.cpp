@@ -591,14 +591,14 @@ void ProcessReverb(int count, float* input0, float* input1, float* output0,
     fRec4[IOTA0 & 8191] = fTemp0 * fRec40[0];
     fRec5[IOTA0 & 32767] = fTemp24;
     output0[i0] = float(
-        0.6f *
+        0.3f *
         (fRec2[(IOTA0 - iConst28) & 32767] + fRec2[(IOTA0 - iConst27) & 32767] +
          fRec0[(IOTA0 - iConst26) & 32767] -
          (fRec1[(IOTA0 - iConst25) & 16383] +
           fRec5[(IOTA0 - iConst24) & 32767] + fRec4[(IOTA0 - iConst23) & 8191] +
           fRec3[(IOTA0 - iConst22) & 32767])));
     output1[i0] = float(
-        0.6f *
+        0.3f *
         (fRec5[(IOTA0 - iConst35) & 32767] + fRec5[(IOTA0 - iConst34) & 32767] +
          fRec3[(IOTA0 - iConst33) & 32767] -
          (fRec4[(IOTA0 - iConst32) & 8191] + fRec2[(IOTA0 - iConst31) & 32767] +

@@ -45,13 +45,13 @@ int Chords::note_diff_between_notes(int note1, int note2) {
 int Chords::Regenerate(bool best_is_min) {
   shuffleArray(note_octaves, 3);
 
-  progression_index = rand() % CHORD_PROGRESSION_NUM;
+  // progression_index = rand() % CHORD_PROGRESSION_NUM;
 
   for (int i = 0; i < CHORDS_IN_PROGRESSION; i++) {
     for (int j = 0; j < NOTES_IN_CHORD; j++) {
-      progression_matrix[i][j] =
-          (int)chord_dictionary[progression_matrix_dictionary[progression_index][i] -
-                                1][j];
+      progression_matrix[i][j] = (int)
+          chord_dictionary[progression_matrix_dictionary[progression_index][i] -
+                           1][j];
     }
   }
 
@@ -74,7 +74,8 @@ int Chords::Regenerate(bool best_is_min) {
                                   progression_matrix[2][i]);
       score_total += score;
     }
-    if ((score_total < score_best && best_is_min) || (score_total > score_best && !best_is_min) || score_best == -1) {
+    if ((score_total < score_best && best_is_min) ||
+        (score_total > score_best && !best_is_min) || score_best == -1) {
       for (int i = 0; i < NOTES_IN_CHORD; ++i) {
         arr_best[0][i] = progression_matrix[0][i];
         arr_best[1][i] = progression_matrix[1][i];

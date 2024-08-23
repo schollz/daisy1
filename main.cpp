@@ -5,8 +5,8 @@
 // definitions
 #define INCLUDE_REVERB
 #define INCLUDE_COMPRESSOR
-// #define INCLUDE_SEQUENCER
-#define INCLUDE_TAPE_LPF
+#define INCLUDE_SEQUENCER
+// #define INCLUDE_TAPE_LPF
 //
 #include "core_cm7.h"
 #include "daisy_pod.h"
@@ -132,8 +132,9 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
 
   // passthrough
   for (size_t i = 0; i < size; i += 2) {
-    out[i] = (0.5 * in[i]) + audiocallback_bufout[i];
-    out[i + 1] = (0.5 * in[i + 1]) + audiocallback_bufout[i + 1];
+    // TODO make a parameter for input gain
+    out[i] = (0.25 * in[i]) + audiocallback_bufout[i];
+    out[i + 1] = (0.25 * in[i + 1]) + audiocallback_bufout[i + 1];
   }
 
   // de-interleave
@@ -451,18 +452,20 @@ void Controls(float audio_level) {
   }
 
   // make array of knob processes
-  knobs_current[0] = roundf(hw.knob1.Process() * 500) / 500;
+  knobs_current[0] = roundf(hw.knob1.Process() * 100) / 100;
   if (knobs_current[0] != knobs_last[0]) {
     knobs_last[0] = knobs_current[0];
     tape[loop_index].lfos[2].SetValue(knobs_current[0]);
     // tape[loop_index].SetPan(knobs_current[0] * 2.0f - 1.0f);
     controls_changed = true;
+#ifdef INCLUDE_COMPRESSOR
     compressor.Set(knobs_current[0]);
-    // if (tape[loop_index].IsPlayingOrFading()) {
-    //   tape[loop_index].SetRate(hw.knob1.Process() * 2);
-    // }
+#endif
+    if (tape[loop_index].IsPlayingOrFading()) {
+      tape[loop_index].SetRate(roundf(hw.knob1.Process() * 25) / 25);
+    }
   }
-  knobs_current[1] = roundf(hw.knob2.Process() * 500) / 500;
+  knobs_current[1] = roundf(hw.knob2.Process() * 100) / 100;
   if (knobs_current[1] != knobs_last[1]) {
     knobs_last[1] = knobs_current[1];
     reverb_wet_dry = hw.knob2.Process();
@@ -485,9 +488,9 @@ void Controls(float audio_level) {
       if (tape[loop_index].IsRecording()) {
         tape[loop_index].RecordingStop();
         loop_index++;
-      }
-      if (measure_beat_count / 4 < 30) {
         loop_index = loop_index % NUM_LOOPS;
+      }
+      if (measure_beat_count / 4 < 6) {
         // prepare the next loop for recording
         if (tape[(loop_index + 1) % NUM_LOOPS].IsPlayingOrFading()) {
           tape[(loop_index + 1) % NUM_LOOPS].PlayingStop();

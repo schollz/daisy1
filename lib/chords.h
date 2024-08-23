@@ -197,7 +197,7 @@ class Chords {
  public:
   Chords(){};
   int Regenerate(bool best_is_min);
-  int progression_index = 0;  // rand() % CHORD_PROGRESSION_NUM;
+  int progression_index = 7;  // rand() % CHORD_PROGRESSION_NUM;
   int progression_matrix[CHORDS_IN_PROGRESSION][NOTES_IN_CHORD];
   int note_sequence[CHORDS_IN_PROGRESSION * NOTES_IN_CHORD];
   int note_octaves[3] = {72, 48, 60};

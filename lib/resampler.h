@@ -18,9 +18,9 @@ class SampleRateConverter {
 
   void Process(const float* input_buffer, size_t input_size,
                float* output_buffer, size_t output_size) {
-    float new_cutoff_rate = ((float)input_size) / ((float)output_size);
+#ifdef INCLUDE_TAPE_LPF
+    float new_cutoff_rate = ((float)(input_size - 2)) / ((float)output_size);
     if (cutoff_rate != new_cutoff_rate && new_cutoff_rate != 1.0f) {
-      cutoff_rate = new_cutoff_rate;
       float cutoff;
       if (cutoff_rate > 1) {
         cutoff = 0.5f / cutoff_rate;
@@ -29,13 +29,14 @@ class SampleRateConverter {
       }
       biquad1.SetCutoff(cutoff * 48000);
     }
+    cutoff_rate = new_cutoff_rate;
 
     // Apply filter before processing
     float input_buffer_copy[input_size];
     for (size_t i = 0; i < input_size; i++) {
       input_buffer_copy[i] = input_buffer[i];
     }
-    if (cutoff_rate > 1) {
+    if (cutoff_rate > 1.0f) {
       biquad1.ProcessMinus2(input_buffer_copy, input_size);
     }
 
@@ -46,9 +47,16 @@ class SampleRateConverter {
       output_buffer[i] = output[i];
     }
 
-    if (cutoff_rate < 1) {
+    if (cutoff_rate < 1.0f) {
       biquad1.Process(output_buffer, output_size);
     }
+#else
+    // Resample
+    std::vector<float> output = Process(input_buffer, input_size, output_size);
+    for (size_t i = 0; i < output_size; i++) {
+      output_buffer[i] = output[i];
+    }
+#endif
   }
 
   // Process an input buffer and return a vector of output samples

@@ -7,7 +7,7 @@
 #define INCLUDE_REVERB_VEC
 #define INCLUDE_COMPRESSOR
 // #define INCLUDE_SEQUENCER
-// #define INCLUDE_TAPE_LPF
+#define INCLUDE_TAPE_LPF
 //
 #include "core_cm7.h"
 #include "daisy_pod.h"
@@ -476,12 +476,12 @@ void Controls(float audio_level) {
     tape[loop_index].lfos[2].SetValue(knobs_current[0]);
     // tape[loop_index].SetPan(knobs_current[0] * 2.0f - 1.0f);
     controls_changed = true;
-#ifdef INCLUDE_COMPRESSOR
-    compressor.Set(knobs_current[0]);
-#endif
-    // if (tape[loop_index].IsPlayingOrFading()) {
-    //   tape[loop_index].SetRate(roundf(hw.knob1.Process() * 25) / 25);
-    // }
+    // #ifdef INCLUDE_COMPRESSOR
+    //     compressor.Set(knobs_current[0]);
+    // #endif
+    if (tape[loop_index].IsPlayingOrFading()) {
+      tape[loop_index].SetRate(roundf(hw.knob1.Process() * 25) / 25);
+    }
   }
   knobs_current[1] = roundf(hw.knob2.Process() * 100) / 100;
   if (knobs_current[1] != knobs_last[1]) {

@@ -404,15 +404,15 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
       head_play_last_pos = head_play_last_pos_before_peek;
     }
 
-    // apply amplitude modulation
-    lfos[TAPE_LFO_AMP].Update(current_time);
-    float val = lfos[TAPE_LFO_AMP].Value();
-    for (size_t i = 0; i < input_size; i++) {
-      outl1[i] = outl1[i] * val;
-      if (is_stereo) {
-        outr1[i] = outr1[i] * val;
-      }
-    }
+    // // apply amplitude modulation
+    // lfos[TAPE_LFO_AMP].Update(current_time);
+    // float val = lfos[TAPE_LFO_AMP].Value();
+    // for (size_t i = 0; i < input_size; i++) {
+    //   outl1[i] = outl1[i] * val;
+    //   if (is_stereo) {
+    //     outr1[i] = outr1[i] * val;
+    //   }
+    // }
 
     // apply resampling which will resize `out*1` into `out*2`
     // where `out*2` is the correct number of samples to send out
@@ -433,16 +433,16 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
     //   }
     // }
 
-    // apply panning
-    lfos[TAPE_LFO_PAN].Update(current_time);
+    // // apply panning
+    // lfos[TAPE_LFO_PAN].Update(current_time);
     if (!is_stereo) {
       // copy left channel to right channel
       for (size_t i = 0; i < size_deinterleaved; i++) {
         outr2[i] = outl2[i];
       }
     }
-    Balance2_Process(outl2, outr2, size_deinterleaved,
-                     lfos[TAPE_LFO_PAN].Value());
+    // Balance2_Process(outl2, outr2, size_deinterleaved,
+    //                  lfos[TAPE_LFO_PAN].Value());
 
     // re-interleave and add the output to the main
     for (size_t i = 0; i < size_interleaved; i += 2) {

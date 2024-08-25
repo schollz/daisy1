@@ -11,10 +11,7 @@ class SampleRateConverter {
  public:
   SampleRateConverter() {}
 
-  void Reset() {
-    fractional_index = 0.0;
-    initialized = false;
-  }
+  void Reset() { initialized = false; }
 
   void Process(const float* input_buffer, size_t input_size,
                float* output_buffer, size_t output_size) {
@@ -29,7 +26,7 @@ class SampleRateConverter {
       } else if (new_cutoff_rate < 1.0f) {
         cutoff = 0.5f * new_cutoff_rate;
       }
-      biquad1.SetCutoff(new_cutoff_rate * 48000);
+      biquad1.SetCutoff(cutoff * 48000);
     }
     cutoff_rate = new_cutoff_rate;
 
@@ -68,7 +65,6 @@ class SampleRateConverter {
                              size_t output_size) {
     std::vector<float> output_buffer(output_size);
     if (!initialized) {
-      fractional_index = 0.0;
       initialized = true;
       last_sample = input_buffer[0];
     }
@@ -115,7 +111,6 @@ class SampleRateConverter {
     return ((c3 * x + c2) * x + c1) * x + c0;
   }
 
-  float fractional_index = 0;
   bool initialized = false;
   float last_sample;
 };

@@ -3,8 +3,9 @@
 // #include <map>
 #include <vector>
 // definitions
-#define INCLUDE_REVERB
-#define INCLUDE_COMPRESSOR
+// #define INCLUDE_REVERB
+#define INCLUDE_REVERB_VEC
+// #define INCLUDE_COMPRESSOR
 #define INCLUDE_SEQUENCER
 // #define INCLUDE_TAPE_LPF
 //
@@ -18,6 +19,9 @@
 
 #ifdef INCLUDE_REVERB
 #include "lib/fverb2.h"
+#endif
+#ifdef INCLUDE_REVERB_VEC
+#include "lib/fverb2_vec.h"
 #endif
 
 #ifdef INCLUDE_COMPRESSOR
@@ -45,6 +49,9 @@ DaisySeed daisyseed;
 LFO lfotest;
 I2CHandle i2c;
 Chords chords;
+#ifdef INCLUDE_REVERB_VEC
+FVerb2 fverb2;
+#endif
 
 float reverb_wet_dry = 0;
 
@@ -153,6 +160,10 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
   ProcessReverb(AUDIO_BLOCK_SIZE, inl, inr, outl, outr, reverb_wet_dry);
 #endif
 
+#ifdef INCLUDE_REVERB_VEC
+  fverb2.Process(AUDIO_BLOCK_SIZE, inl, inr, outl, outr);
+#endif
+
 #ifdef INCLUDE_COMPRESSOR
   compressor.Process(AUDIO_BLOCK_SIZE, outl, outr);
 #endif
@@ -229,6 +240,9 @@ int main(void) {
 
 #ifdef INCLUDE_REVERB
       initializeReverb();
+#endif
+#ifdef INCLUDE_REVERB_VEC
+  fverb2.init(AUDIO_SAMPLE_RATE);
 #endif
 
   // // Handle we'll use to interact with SPI

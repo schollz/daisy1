@@ -20,23 +20,26 @@ class SampleRateConverter {
                float* output_buffer, size_t output_size) {
 #ifdef INCLUDE_TAPE_LPF
     float new_cutoff_rate = ((float)(input_size - 2)) / ((float)output_size);
+    // 256 samples -> 128 samples: 2.0 = downsampling
+    // 64 samples -> 128 samples: 0.5 = upsampling
     if (cutoff_rate != new_cutoff_rate && new_cutoff_rate != 1.0f) {
       float cutoff;
-      if (cutoff_rate > 1) {
-        cutoff = 0.5f / cutoff_rate;
-      } else {
-        cutoff = 0.5f * cutoff_rate;
+      if (new_cutoff_rate > 1.0f) {
+        cutoff = 0.5f / new_cutoff_rate;
+      } else if (new_cutoff_rate < 1.0f) {
+        cutoff = 0.5f * new_cutoff_rate;
       }
-      biquad1.SetCutoff(cutoff * 48000);
+      biquad1.SetCutoff(new_cutoff_rate * 48000);
     }
     cutoff_rate = new_cutoff_rate;
 
-    // Apply filter before processing
+    // Apply filter before processing if downsampling
     float input_buffer_copy[input_size];
     for (size_t i = 0; i < input_size; i++) {
       input_buffer_copy[i] = input_buffer[i];
     }
     if (cutoff_rate > 1.0f) {
+      // Downsampling: Apply the filter before downsampling.
       biquad1.ProcessMinus2(input_buffer_copy, input_size);
     }
 
@@ -48,6 +51,7 @@ class SampleRateConverter {
     }
 
     if (cutoff_rate < 1.0f) {
+      // Upsampling: Apply the filter after upsampling.
       biquad1.Process(output_buffer, output_size);
     }
 #else

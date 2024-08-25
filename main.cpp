@@ -5,7 +5,7 @@
 // definitions
 // #define INCLUDE_REVERB
 #define INCLUDE_REVERB_VEC
-// #define INCLUDE_COMPRESSOR
+#define INCLUDE_COMPRESSOR
 // #define INCLUDE_SEQUENCER
 // #define INCLUDE_TAPE_LPF
 //
@@ -21,11 +21,14 @@
 #include "lib/fverb2.h"
 #endif
 #ifdef INCLUDE_REVERB_VEC
+// vectorized reverb is 13% faster
 #include "lib/fverb2_vec.h"
 #endif
 
 #ifdef INCLUDE_COMPRESSOR
+// for some reason the non-vectorized is faster by 3%
 #include "lib/compressor.h"
+// #include "lib/compressor_vec.h"
 Compressor compressor;
 #endif
 
@@ -166,6 +169,7 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
 
 #ifdef INCLUDE_COMPRESSOR
   compressor.Process(AUDIO_BLOCK_SIZE, outl, outr);
+  // compressor.Process(AUDIO_BLOCK_SIZE, outl, outr, outl, outr);
 #endif
 
   // re-interleave

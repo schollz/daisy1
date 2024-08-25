@@ -20,7 +20,6 @@ Compilation options: -lang cpp -ct 1 -es 1 -mcd 16 -mdd 1024 -mdy 33 -single
 #include "core_cm7.h"
 #include "daisy_pod.h"
 #include "daisysp.h"
-#include "fverb2_vec.h"
 
 class mydspSIG0 {
  private:
@@ -77,6 +76,25 @@ float DSY_SDRAM_BSS fYec13[131072];
 float DSY_SDRAM_BSS fRec3[32768];
 float DSY_SDRAM_BSS fRec4[8192];
 float DSY_SDRAM_BSS fRec5[32768];
+float DSY_SDRAM_BSS fRec26_perm[4];
+float DSY_SDRAM_BSS fRec25_perm[4];
+float DSY_SDRAM_BSS fRec8_perm[4];
+float DSY_SDRAM_BSS fRec20_perm[4];
+float DSY_SDRAM_BSS fRec23_perm[4];
+float DSY_SDRAM_BSS fRec24_perm[4];
+float DSY_SDRAM_BSS fRec22_perm[4];
+float DSY_SDRAM_BSS fRec21_perm[4];
+float DSY_SDRAM_BSS fRec29_perm[4];
+float DSY_SDRAM_BSS fRec30_perm[4];
+float DSY_SDRAM_BSS fRec33_perm[4];
+float DSY_SDRAM_BSS fRec14_perm[4];
+float DSY_SDRAM_BSS fRec12_perm[4];
+float DSY_SDRAM_BSS fRec27_perm[4];
+float DSY_SDRAM_BSS fRec18_perm[4];
+float DSY_SDRAM_BSS fRec16_perm[4];
+float DSY_SDRAM_BSS fRec28_perm[4];
+float DSY_SDRAM_BSS fRec35_perm[4];
+float DSY_SDRAM_BSS fRec34_perm[4];
 
 class FVerb2 {
  private:
@@ -86,52 +104,33 @@ class FVerb2 {
   float fConst2;
   float fHslider0;
   float fConst3;
-  float fRec8_perm[4];
   float fHslider1;
   float fConst4;
-  float fRec20_perm[4];
   float fHslider2;
-  float fRec23_perm[4];
   float fHslider3;
   float fConst5;
-  float fRec24_perm[4];
   float fHslider4;
-  float fRec25_perm[4];
   int fYec0_idx;
   int fYec0_idx_save;
-  float fRec22_perm[4];
-  float fRec21_perm[4];
   float fHslider5;
-  float fRec26_perm[4];
   int fYec1_idx;
   int fYec1_idx_save;
   int iConst6;
-  float fRec18_perm[4];
   int fYec2_idx;
   int fYec2_idx_save;
   int iConst7;
-  float fRec16_perm[4];
   float fHslider6;
-  float fRec27_perm[4];
   int fYec3_idx;
   int fYec3_idx_save;
   int iConst8;
-  float fRec14_perm[4];
   int fYec4_idx;
   int fYec4_idx_save;
   int iConst9;
-  float fRec12_perm[4];
   float fHslider7;
-  float fRec28_perm[4];
   float fHslider8;
-  float fRec33_perm[4];
   float fHslider9;
-  float fRec35_perm[4];
   float fConst10;
-  float fRec34_perm[4];
   float fConst11;
-  float fRec29_perm[4];
-  float fRec30_perm[4];
   int iRec31_perm[4];
   int iRec32_perm[4];
   int iConst12;
@@ -625,7 +624,7 @@ class FVerb2 {
   //   }
 
   virtual void Process(int count, float* input0_ptr, float* input1_ptr,
-                       float* output0_ptr, float* output1_ptr) {
+                       float* output0_ptr, float* output1_ptr, float wet) {
     float fSlow0 = fConst3 * float(fHslider0);
     float fRec8_tmp[36];
     float* fRec8 = &fRec8_tmp[4];
@@ -1392,26 +1391,28 @@ class FVerb2 {
       /* Vectorizable loop 36 */
       /* Compute code */
       for (int i = 0; i < vsize; i = i + 1) {
-        output0[i] =
-            float(0.6f * (fRec2[(i + fRec2_idx - iConst28) & 32767] +
-                          fRec2[(i + fRec2_idx - iConst27) & 32767] +
-                          fRec0[(i + fRec0_idx - iConst26) & 32767] -
-                          (fRec1[(i + fRec1_idx - iConst25) & 16383] +
-                           fRec5[(i + fRec5_idx - iConst24) & 32767] +
-                           fRec4[(i + fRec4_idx - iConst23) & 8191] +
-                           fRec3[(i + fRec3_idx - iConst22) & 32767])));
+        output0[i] = (1 - wet) * input0[i] +
+                     float(wet * 0.3f *
+                           (fRec2[(i + fRec2_idx - iConst28) & 32767] +
+                            fRec2[(i + fRec2_idx - iConst27) & 32767] +
+                            fRec0[(i + fRec0_idx - iConst26) & 32767] -
+                            (fRec1[(i + fRec1_idx - iConst25) & 16383] +
+                             fRec5[(i + fRec5_idx - iConst24) & 32767] +
+                             fRec4[(i + fRec4_idx - iConst23) & 8191] +
+                             fRec3[(i + fRec3_idx - iConst22) & 32767])));
       }
       /* Vectorizable loop 37 */
       /* Compute code */
       for (int i = 0; i < vsize; i = i + 1) {
-        output1[i] =
-            float(0.6f * (fRec5[(i + fRec5_idx - iConst35) & 32767] +
-                          fRec5[(i + fRec5_idx - iConst34) & 32767] +
-                          fRec3[(i + fRec3_idx - iConst33) & 32767] -
-                          (fRec4[(i + fRec4_idx - iConst32) & 8191] +
-                           fRec2[(i + fRec2_idx - iConst31) & 32767] +
-                           fRec1[(i + fRec1_idx - iConst30) & 16383] +
-                           fRec0[(i + fRec0_idx - iConst29) & 32767])));
+        output1[i] = (1 - wet) * input1[i] +
+                     float(wet * 0.3f *
+                           (fRec5[(i + fRec5_idx - iConst35) & 32767] +
+                            fRec5[(i + fRec5_idx - iConst34) & 32767] +
+                            fRec3[(i + fRec3_idx - iConst33) & 32767] -
+                            (fRec4[(i + fRec4_idx - iConst32) & 8191] +
+                             fRec2[(i + fRec2_idx - iConst31) & 32767] +
+                             fRec1[(i + fRec1_idx - iConst30) & 16383] +
+                             fRec0[(i + fRec0_idx - iConst29) & 32767])));
       }
     }
     /* Remaining frames */
@@ -2068,26 +2069,28 @@ class FVerb2 {
       /* Vectorizable loop 36 */
       /* Compute code */
       for (int i = 0; i < vsize; i = i + 1) {
-        output0[i] =
-            float(0.6f * (fRec2[(i + fRec2_idx - iConst28) & 32767] +
-                          fRec2[(i + fRec2_idx - iConst27) & 32767] +
-                          fRec0[(i + fRec0_idx - iConst26) & 32767] -
-                          (fRec1[(i + fRec1_idx - iConst25) & 16383] +
-                           fRec5[(i + fRec5_idx - iConst24) & 32767] +
-                           fRec4[(i + fRec4_idx - iConst23) & 8191] +
-                           fRec3[(i + fRec3_idx - iConst22) & 32767])));
+        output0[i] = (1 - wet) * input0[i] +
+                     float(wet * 0.3f *
+                           (fRec2[(i + fRec2_idx - iConst28) & 32767] +
+                            fRec2[(i + fRec2_idx - iConst27) & 32767] +
+                            fRec0[(i + fRec0_idx - iConst26) & 32767] -
+                            (fRec1[(i + fRec1_idx - iConst25) & 16383] +
+                             fRec5[(i + fRec5_idx - iConst24) & 32767] +
+                             fRec4[(i + fRec4_idx - iConst23) & 8191] +
+                             fRec3[(i + fRec3_idx - iConst22) & 32767])));
       }
       /* Vectorizable loop 37 */
       /* Compute code */
       for (int i = 0; i < vsize; i = i + 1) {
-        output1[i] =
-            float(0.6f * (fRec5[(i + fRec5_idx - iConst35) & 32767] +
-                          fRec5[(i + fRec5_idx - iConst34) & 32767] +
-                          fRec3[(i + fRec3_idx - iConst33) & 32767] -
-                          (fRec4[(i + fRec4_idx - iConst32) & 8191] +
-                           fRec2[(i + fRec2_idx - iConst31) & 32767] +
-                           fRec1[(i + fRec1_idx - iConst30) & 16383] +
-                           fRec0[(i + fRec0_idx - iConst29) & 32767])));
+        output1[i] = (1 - wet) * input1[i] +
+                     float(wet * 0.3f *
+                           (fRec5[(i + fRec5_idx - iConst35) & 32767] +
+                            fRec5[(i + fRec5_idx - iConst34) & 32767] +
+                            fRec3[(i + fRec3_idx - iConst33) & 32767] -
+                            (fRec4[(i + fRec4_idx - iConst32) & 8191] +
+                             fRec2[(i + fRec2_idx - iConst31) & 32767] +
+                             fRec1[(i + fRec1_idx - iConst30) & 16383] +
+                             fRec0[(i + fRec0_idx - iConst29) & 32767])));
       }
     }
   }

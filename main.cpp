@@ -6,7 +6,7 @@
 // #define INCLUDE_REVERB
 #define INCLUDE_REVERB_VEC
 // #define INCLUDE_COMPRESSOR
-#define INCLUDE_SEQUENCER
+// #define INCLUDE_SEQUENCER
 // #define INCLUDE_TAPE_LPF
 //
 #include "core_cm7.h"
@@ -161,7 +161,7 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
 #endif
 
 #ifdef INCLUDE_REVERB_VEC
-  fverb2.Process(AUDIO_BLOCK_SIZE, inl, inr, outl, outr);
+  fverb2.Process(AUDIO_BLOCK_SIZE, inl, inr, outl, outr, reverb_wet_dry);
 #endif
 
 #ifdef INCLUDE_COMPRESSOR

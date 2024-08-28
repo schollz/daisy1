@@ -61,8 +61,8 @@ FVerb2 fverb2;
 
 float reverb_wet_dry = 0;
 
-int8_t measure_measure_count = -1;
-int8_t measure_beat_count = -1;
+int measure_measure_count = -1;
+int measure_beat_count = -1;
 
 float noteNumberToFrequency(uint8_t note) {
   return 440.0f * powf(2.0f, (((float)note) - 69) / 12.0f);

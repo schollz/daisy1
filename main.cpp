@@ -354,41 +354,11 @@ int main(void) {
                            (i + 1) * MAX_SIZE / NUM_LOOPS};
     tape[i].Init(endpoints, tape_circular_buffer, AUDIO_SAMPLE_RATE,
                  stereo_mode);
-    daisy_midi.sysex_printf_buffer("tape: %d, %d-%d", i, endpoints[0],
+    daisy_midi.sysex_printf_buffer("tape: %d, %d-%d\n", i, endpoints[0],
                                    endpoints[1]);
   }
-
-  // // calibrate dac values
-  // for (uint16_t value = 0; value < 4095; value += 500) {
-  //   daisyseed.dac.WriteValue(DacHandle::Channel::TWO, value);
-  //   daisy_midi.sysex_printf_buffer("DAC value: %d", value);
-  //   System::Delay(3000);
-  // }
-  // for (uint16_t value = 2000; value < 4095; value += 250) {
-  //   daisyseed.dac.WriteValue(DacHandle::Channel::TWO, value);
-  //   daisy_midi.sysex_printf_buffer("DAC value: %d", value);
-  //   System::Delay(3000);
-  // }
-
-  // uint16_t val = 4095;
-  // daisy_midi.sysex_printf_buffer("DAC value: %d ", val);
-  // daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
-  // System::Delay(5000000);
-  // for (uint8_t i = 0; i < 10; i++) {
-  //   for (uint16_t t = 48; t < 80; t++) {
-  //     uint16_t val =
-  //         roundf(847.3722995 * log(noteNumberToFrequency(t)) - 1624.788016);
-  //     daisy_midi.sysex_printf_buffer("DAC value: %d %d", t, val);
-  //     daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
-  //     System::Delay(500);
-  //   }
-  // }
-
-  // Mapping notes to their corresponding frequencies (in Hz)
-
+  System::Delay(2000);
   daisy_midi.sysex_send_buffer();
-
-  System::Delay(200);
 
   hw.SetAudioBlockSize(AUDIO_BLOCK_SIZE);
 
@@ -493,12 +463,12 @@ void Controls(float audio_level) {
     tape[loop_index].lfos[2].SetValue(knobs_current[0]);
     // tape[loop_index].SetPan(knobs_current[0] * 2.0f - 1.0f);
     controls_changed = true;
-    // #ifdef INCLUDE_COMPRESSOR
-    //     compressor.Set(knobs_current[0]);
-    // #endif
-    if (tape[loop_index].IsPlayingOrFading()) {
-      tape[loop_index].SetRate(hw.knob1.Process() * 2);
-    }
+#ifdef INCLUDE_COMPRESSOR
+    compressor.Set(knobs_current[0]);
+#endif
+    // if (tape[loop_index].IsPlayingOrFading()) {
+    //   tape[loop_index].SetRate(hw.knob1.Process() * 2);
+    // }
   }
   knobs_current[1] = roundf(hw.knob2.Process() * 100) / 100;
   if (knobs_current[1] != knobs_last[1]) {

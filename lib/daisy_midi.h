@@ -69,7 +69,11 @@ class DaisyMidi {
     }
     // send sysex_buffer
     sysex_send(sysex_buffer);
+    // reset sysex_buffer
     sysex_buffer_i = 0;
+    for (size_t i = 0; i < 126; i++) {
+      sysex_buffer[i] = 0;
+    }
   }
 
   void handlerHWMidiEvent(MidiEvent ev) {

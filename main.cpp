@@ -6,7 +6,7 @@
 // #define INCLUDE_REVERB
 // #define INCLUDE_REVERB_VEC
 // #define INCLUDE_COMPRESSOR
-// #define INCLUDE_SEQUENCER
+#define INCLUDE_SEQUENCER
 // #define INCLUDE_TAPE_LPF
 //
 #include "core_cm7.h"
@@ -180,17 +180,6 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
     out[i] = outl[i / 2];
     out[i + 1] = outr[i / 2];
   }
-
-  // // apply reverb to tape
-  // float outl, outr, inl, inr;
-  // for (size_t i = 0; i < size; i += 2) {
-  //   // apply reverb
-  //   inl = out[i];
-  //   inr = out[i + 1];
-  //   GetReverbSample(outl, outr, inl, inr);
-  //   out[i] = outl;
-  //   out[i + 1] = outr;
-  // }
 
 #ifdef INCLUDE_AUDIO_PROFILING
   audiocallback_time_needed = DWT->CYCCNT;
@@ -524,6 +513,7 @@ void Controls(float audio_level) {
       if (measure_beat_count % 12 == 0) {
         chords.Regenerate((rand() % 2) < 1);
       }
+      // TODO: option to reset loops every measure
       // for (size_t i = 0; i < NUM_LOOPS; i++) {
       //   if (tape[i].IsPlayingOrFading()) {
       //     tape[i].PlayingRestart();
@@ -534,38 +524,39 @@ void Controls(float audio_level) {
         loop_index++;
         loop_index = loop_index % NUM_LOOPS;
       }
-      if (measure_beat_count / 4 < 12 && (measure_beat_count / 4) % 2 == 0) {
-        // prepare the next loop for recording
-        if (tape[(loop_index + 1) % NUM_LOOPS].IsPlayingOrFading()) {
-          tape[(loop_index + 1) % NUM_LOOPS].PlayingStop();
-        }
-        tape[loop_index].RecordingStart();
-        new_recording = true;
-      }
+      // // TODO: option to automate recording
+      // if (measure_beat_count / 4 < 12 && (measure_beat_count / 4) % 2 == 0) {
+      //   // prepare the next loop for recording
+      //   if (tape[(loop_index + 1) % NUM_LOOPS].IsPlayingOrFading()) {
+      //     tape[(loop_index + 1) % NUM_LOOPS].PlayingStop();
+      //   }
+      //   tape[loop_index].RecordingStart();
+      //   new_recording = true;
+      // }
     }
     int note_to_play = chords.note_sequence[measure_beat_count % 12] +
                        chords.note_octaves[(measure_beat_count / 4) % 3];
-    daisy_midi.sysex_printf_buffer("[%d] measure: %d, beat: %d, note: %d",
+    daisy_midi.sysex_printf_buffer("[%d] measure %d beat: %d note: %d\n",
                                    new_recording, measure_beat_count / 4,
                                    measure_beat_count % 4, note_to_play);
-    writeNoteCV(note_to_play);
+    // writeNoteCV(note_to_play);
 #endif
-  } else if (print_timer.Process()) {
-    uint32_t currentTime = System::GetNow();
-    if (currentTime - lastPrintTime >= printInterval) {
-      if (controls_changed || true) {
-        daisy_midi.sysex_printf_buffer(
-            "%d, knob1=%2.3f knob2=%2.3f, enc=%d, usage=%2.1f%% per %d "
-            "samples, rate=%2.3f, pan=%2.2f, amp=%2.2f, lpf=%2.2f, audio=%2.4f",
-            loop_index, knobs_current[0], knobs_current[1], encoder_increment,
-            (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f,
-            audiocallback_sample_num, tape[loop_index].GetRate(),
-            tape[loop_index].lfos[0].Value(), tape[loop_index].lfos[1].Value(),
-            tape[loop_index].lfos[2].Value(), audio_level);
-        controls_changed = false;
-      }
-      lastPrintTime = currentTime;
-    }
+  }
+  if (print_timer.Process()) {
+    daisy_midi.sysex_printf_buffer(
+        "usage=%2.1f%% ",
+        (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f,
+        audiocallback_sample_num);
+    daisy_midi.sysex_printf_buffer("knob1=%2.3f ", knobs_current[0]);
+    daisy_midi.sysex_printf_buffer("knob2=%2.3f\n", knobs_current[1]);
+    // daisy_midi.sysex_printf_buffer(
+    //     "%d, knob1=%2.3f knob2=%2.3f, enc=%d, usage=%2.1f%% per %d "
+    //     "samples, rate=%2.3f, pan=%2.2f, amp=%2.2f, lpf=%2.2f, audio=%2.4f",
+    //     loop_index, knobs_current[0], knobs_current[1], encoder_increment,
+    //     (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f,
+    //     audiocallback_sample_num, tape[loop_index].GetRate(),
+    //     tape[loop_index].lfos[0].Value(), tape[loop_index].lfos[1].Value(),
+    //     tape[loop_index].lfos[2].Value(), audio_level);
   }
   daisy_midi.sysex_send_buffer();
 }

@@ -4,16 +4,17 @@
 #include <vector>
 // definitions
 // #define INCLUDE_REVERB
-#define INCLUDE_REVERB_VEC
-#define INCLUDE_COMPRESSOR
+// #define INCLUDE_REVERB_VEC
+// #define INCLUDE_COMPRESSOR
 // #define INCLUDE_SEQUENCER
-#define INCLUDE_TAPE_LPF
+// #define INCLUDE_TAPE_LPF
 //
 #include "core_cm7.h"
 #include "daisy_pod.h"
 #include "daisysp.h"
 //
 #include "lib/chords.h"
+#include "lib/daisy_midi.h"
 #include "lib/lfo.h"
 #include "lib/tape.h"
 
@@ -49,6 +50,8 @@ using namespace daisysp;
 bool stereo_mode = false;
 DaisyPod hw;
 DaisySeed daisyseed;
+DaisyMidi daisy_midi;
+
 LFO lfotest;
 I2CHandle i2c;
 Chords chords;
@@ -196,7 +199,27 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
 
 int main(void) {
   hw.Init();
-  daisyseed.StartLog(false);
+
+  // initialize midi
+  daisy_midi.Init();
+  daisy_midi.SetNoteOnCallback([](uint8_t channel, uint8_t note,
+                                  uint8_t velocity) {
+    daisy_midi.sysex_printf_buffer("NoteOn: %d %d %d", channel, note, velocity);
+  });
+  daisy_midi.SetNoteOffCallback(
+      [](uint8_t channel, uint8_t note, uint8_t velocity) {
+        daisy_midi.sysex_printf_buffer("NoteOff: %d %d %d", channel, note,
+                                       velocity);
+      });
+  daisy_midi.SetMidiTimingCallback(
+      []() { daisy_midi.sysex_printf_buffer("midi timing"); });
+  daisy_midi.SetSysExCallback([](const uint8_t* data, size_t size) {
+    if (size == 3 && data[0] == 'a' && data[1] == 'b' && data[2] == 'c') {
+      daisy_midi.sysex_printf_buffer("got abc");
+    } else {
+      daisy_midi.sysex_printf_buffer("%s (%d)", size, data);
+    }
+  });
 
   chords.Regenerate(true);
 
@@ -211,19 +234,19 @@ int main(void) {
   i2c.Init(i2c_conf);
 
   // // i2c scan
-  // daisyseed.PrintLine("MCP4728 scan start");
+  // daisy_midi.sysex_printf_buffer("MCP4728 scan start");
   // for (uint8_t i = 1; i < 128;
   //      i++) {  // Address 0 is usually reserved, start at 1
   //   uint8_t data[1] = {0};
   //   I2CHandle::Result res = i2c.TransmitBlocking(i, data, 1, 100);
   //   if (res == I2CHandle::Result::OK) {
-  //     daisyseed.PrintLine("I2C device found at address: 0x%02X",
+  //     daisy_midi.sysex_printf_buffer("I2C device found at address: 0x%02X",
   //                         i);  // Display the address in hexadecimal format
   //   }
   // }
-  // daisyseed.PrintLine("MCP4728 scan end");
+  // daisy_midi.sysex_printf_buffer("MCP4728 scan end");
 
-  // daisyseed.PrintLine("MCP4728 test");
+  // daisy_midi.sysex_printf_buffer("MCP4728 test");
   // uint8_t i2c_address = 0x60;  // Default I2C address for MCP4725
   // uint8_t data[2];
 
@@ -236,7 +259,7 @@ int main(void) {
   // // Transmit the data
   // i2c.TransmitBlocking(i2c_address, data, 2, 1000);
 
-  // daisyseed.PrintLine("MCP4728 test done");
+  // daisy_midi.sysex_printf_buffer("MCP4728 test done");
 
 #ifdef INLUCDE_COMPRESSOR
   compressor.init(AUDIO_SAMPLE_RATE)
@@ -340,36 +363,39 @@ int main(void) {
                            (i + 1) * MAX_SIZE / NUM_LOOPS};
     tape[i].Init(endpoints, tape_circular_buffer, AUDIO_SAMPLE_RATE,
                  stereo_mode);
-    daisyseed.PrintLine("tape: %d, %d-%d", i, endpoints[0], endpoints[1]);
+    daisy_midi.sysex_printf_buffer("tape: %d, %d-%d", i, endpoints[0],
+                                   endpoints[1]);
   }
 
   // // calibrate dac values
   // for (uint16_t value = 0; value < 4095; value += 500) {
   //   daisyseed.dac.WriteValue(DacHandle::Channel::TWO, value);
-  //   daisyseed.PrintLine("DAC value: %d", value);
+  //   daisy_midi.sysex_printf_buffer("DAC value: %d", value);
   //   System::Delay(3000);
   // }
   // for (uint16_t value = 2000; value < 4095; value += 250) {
   //   daisyseed.dac.WriteValue(DacHandle::Channel::TWO, value);
-  //   daisyseed.PrintLine("DAC value: %d", value);
+  //   daisy_midi.sysex_printf_buffer("DAC value: %d", value);
   //   System::Delay(3000);
   // }
 
   // uint16_t val = 4095;
-  // daisyseed.PrintLine("DAC value: %d ", val);
+  // daisy_midi.sysex_printf_buffer("DAC value: %d ", val);
   // daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
   // System::Delay(5000000);
   // for (uint8_t i = 0; i < 10; i++) {
   //   for (uint16_t t = 48; t < 80; t++) {
   //     uint16_t val =
   //         roundf(847.3722995 * log(noteNumberToFrequency(t)) - 1624.788016);
-  //     daisyseed.PrintLine("DAC value: %d %d", t, val);
+  //     daisy_midi.sysex_printf_buffer("DAC value: %d %d", t, val);
   //     daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
   //     System::Delay(500);
   //   }
   // }
 
   // Mapping notes to their corresponding frequencies (in Hz)
+
+  daisy_midi.sysex_send_buffer();
 
   System::Delay(200);
 
@@ -401,11 +427,11 @@ void Controls(float audio_level) {
   }
   if (hw.button1.FallingEdge()) {
     if (button_time_pressed[0] > 400) {
-      daisyseed.PrintLine("button1 long press");
+      daisy_midi.sysex_printf_buffer("button1 long press");
       tape[loop_index].PlayingReset();
       tape[loop_index].PlayingStart();
     } else {
-      daisyseed.PrintLine("button1 short press");
+      daisy_midi.sysex_printf_buffer("button1 short press");
       tape[loop_index].PlayingToggle();
     }
   }
@@ -415,14 +441,14 @@ void Controls(float audio_level) {
   if (hw.button2.FallingEdge()) {
     if (button_time_pressed[1] > 400) {
       tape[loop_index].RecordingErase();
-      daisyseed.PrintLine("button2 long press, %d-%d",
-                          tape[loop_index].buffer_start,
-                          tape[loop_index].buffer_end);
+      daisy_midi.sysex_printf_buffer("button2 long press, %d-%d",
+                                     tape[loop_index].buffer_start,
+                                     tape[loop_index].buffer_end);
     } else {
       tape[loop_index].RecordingToggle();
-      daisyseed.PrintLine("button2 short press, %d-%d",
-                          tape[loop_index].buffer_start,
-                          tape[loop_index].buffer_end);
+      daisy_midi.sysex_printf_buffer("button2 short press, %d-%d",
+                                     tape[loop_index].buffer_start,
+                                     tape[loop_index].buffer_end);
     }
   }
   // TODO CHECK IF PRIMED
@@ -436,9 +462,9 @@ void Controls(float audio_level) {
   }
   if (hw.encoder.FallingEdge()) {
     if (button_time_pressed[2] > 400) {
-      daisyseed.PrintLine("encoder long press");
+      daisy_midi.sysex_printf_buffer("encoder long press");
     } else {
-      daisyseed.PrintLine("encoder short press");
+      daisy_midi.sysex_printf_buffer("encoder short press");
     }
   }
 
@@ -519,16 +545,16 @@ void Controls(float audio_level) {
     }
     int note_to_play = chords.note_sequence[measure_beat_count % 12] +
                        chords.note_octaves[(measure_beat_count / 4) % 3];
-    daisyseed.PrintLine("[%d] measure: %d, beat: %d, note: %d", new_recording,
-                        measure_beat_count / 4, measure_beat_count % 4,
-                        note_to_play);
+    daisy_midi.sysex_printf_buffer("[%d] measure: %d, beat: %d, note: %d",
+                                   new_recording, measure_beat_count / 4,
+                                   measure_beat_count % 4, note_to_play);
     writeNoteCV(note_to_play);
 #endif
   } else if (print_timer.Process()) {
     uint32_t currentTime = System::GetNow();
     if (currentTime - lastPrintTime >= printInterval) {
       if (controls_changed || true) {
-        daisyseed.PrintLine(
+        daisy_midi.sysex_printf_buffer(
             "%d, knob1=%2.3f knob2=%2.3f, enc=%d, usage=%2.1f%% per %d "
             "samples, rate=%2.3f, pan=%2.2f, amp=%2.2f, lpf=%2.2f, audio=%2.4f",
             loop_index, knobs_current[0], knobs_current[1], encoder_increment,
@@ -541,4 +567,5 @@ void Controls(float audio_level) {
       lastPrintTime = currentTime;
     }
   }
+  daisy_midi.sysex_send_buffer();
 }

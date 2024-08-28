@@ -3,7 +3,7 @@
 TARGET = daisy1
 
 USE_DAISYSP_LGPL = 1
-APP_TYPE=BOOT_SRAM
+# APP_TYPE=BOOT_SRAM
 # without BOOT_SRAM: make program
 # with BOOT_SRAM: make program-boot && make program-dfu
 # Sources
@@ -15,6 +15,7 @@ CPP_SOURCES = main.cpp \
 	lib/lfo.cpp \
 	lib/lpf_biquad.cpp \
 	lib/compressor.cpp \
+	lib/daisy_midi.cpp \
 	lib/chords.cpp
 # lib/fverb2.cpp \
 # lib/lpf_oberheim.cpp \

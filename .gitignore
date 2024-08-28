@@ -8,6 +8,7 @@ lib/crossfade.cpp
 *.lo
 *.o
 *.obj
+dev/midicom/midicom
 
 # Precompiled Headers
 *.gch

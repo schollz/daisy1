@@ -4,8 +4,8 @@
 #include <vector>
 // definitions
 // #define INCLUDE_REVERB
-// #define INCLUDE_REVERB_VEC
-// #define INCLUDE_COMPRESSOR
+#define INCLUDE_REVERB_VEC
+#define INCLUDE_COMPRESSOR
 #define INCLUDE_SEQUENCER
 // #define INCLUDE_TAPE_LPF
 //
@@ -71,17 +71,24 @@ float noteNumberToVoltage(uint8_t note) {
   return (((float)note) - 48.0f) / 12.0f;
 }
 
+uint8_t DMA_BUFFER_MEM_SECTION i2c_buffer[100];
 void writeNoteCV(uint8_t note) {
   float voltage = noteNumberToVoltage(note);
   uint16_t val = roundf(voltage / 3.235 * 4095);
   // DAC
   // // Prepare data to send
-  uint8_t data[2];
-  data[0] = (val >> 8) & 0x0F;  // Upper 4 bits of the 12-bit value
-  data[1] = val & 0xFF;         // Lower 8 bits of the 12-bit value
+  i2c_buffer[0] = (val >> 8) & 0x0F;  // Upper 4 bits of the 12-bit value
+  i2c_buffer[1] = val & 0xFF;         // Lower 8 bits of the 12-bit value
 
   // Transmit the data
-  i2c.TransmitBlocking(0x60, data, 2, 1000);
+  // uint8_t data[2];
+  // data[0] = (val >> 8) & 0x0F;
+  // data[1] = val & 0xFF;
+  // i2c.TransmitBlocking(0x60, data, 2, 1000);
+  i2c.TransmitDma(0x60, i2c_buffer, 2, NULL, NULL);
+
+  daisy_midi.sysex_printf_buffer("[writeNoteCV] writing %2.3f volts (%d)\n",
+                                 voltage, val);
 }
 
 #define NUM_LOOPS 6
@@ -524,22 +531,22 @@ void Controls(float audio_level) {
         loop_index++;
         loop_index = loop_index % NUM_LOOPS;
       }
-      // // TODO: option to automate recording
-      // if (measure_beat_count / 4 < 12 && (measure_beat_count / 4) % 2 == 0) {
-      //   // prepare the next loop for recording
-      //   if (tape[(loop_index + 1) % NUM_LOOPS].IsPlayingOrFading()) {
-      //     tape[(loop_index + 1) % NUM_LOOPS].PlayingStop();
-      //   }
-      //   tape[loop_index].RecordingStart();
-      //   new_recording = true;
-      // }
+      // TODO: option to automate recording
+      if (measure_beat_count / 4 < 12 && (measure_beat_count / 4) % 2 == 0) {
+        // prepare the next loop for recording
+        if (tape[(loop_index + 1) % NUM_LOOPS].IsPlayingOrFading()) {
+          tape[(loop_index + 1) % NUM_LOOPS].PlayingStop();
+        }
+        tape[loop_index].RecordingStart();
+        new_recording = true;
+      }
     }
     int note_to_play = chords.note_sequence[measure_beat_count % 12] +
                        chords.note_octaves[(measure_beat_count / 4) % 3];
     daisy_midi.sysex_printf_buffer("[%d] measure %d beat: %d note: %d\n",
                                    new_recording, measure_beat_count / 4,
                                    measure_beat_count % 4, note_to_play);
-    // writeNoteCV(note_to_play);
+    writeNoteCV(note_to_play);
 #endif
   }
   if (print_timer.Process()) {

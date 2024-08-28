@@ -30,7 +30,6 @@ class SampleRateConverter {
     }
     cutoff_rate = new_cutoff_rate;
 
-    // Apply filter before processing if downsampling
     float input_buffer_copy[input_size];
     for (size_t i = 0; i < input_size; i++) {
       input_buffer_copy[i] = input_buffer[i];

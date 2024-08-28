@@ -3,6 +3,7 @@
 TARGET = daisy1
 
 USE_DAISYSP_LGPL = 1
+
 APP_TYPE=BOOT_SRAM
 # without BOOT_SRAM: make program
 # with BOOT_SRAM:
@@ -10,6 +11,7 @@ APP_TYPE=BOOT_SRAM
 # > make program-boot
 # press reset and then quickly press boot
 # > make program-dfu
+
 # Sources
 CPP_SOURCES = main.cpp \
 	lib/resampler.cpp \

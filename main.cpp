@@ -7,7 +7,7 @@
 #define INCLUDE_REVERB_VEC
 #define INCLUDE_COMPRESSOR
 #define INCLUDE_SEQUENCER
-// #define INCLUDE_TAPE_LPF
+#define INCLUDE_TAPE_LPF
 //
 #include "core_cm7.h"
 #include "daisy_pod.h"
@@ -47,7 +47,7 @@ uint8_t DMA_BUFFER_MEM_SECTION buffer_spi[4];
 using namespace daisy;
 using namespace daisysp;
 
-bool stereo_mode = false;
+bool stereo_mode = true;
 DaisyPod hw;
 DaisySeed daisyseed;
 DaisyMidi daisy_midi;
@@ -502,7 +502,7 @@ void Controls(float audio_level) {
     //     compressor.Set(knobs_current[0]);
     // #endif
     if (tape[loop_index].IsPlayingOrFading()) {
-      tape[loop_index].SetRate(roundf(hw.knob1.Process() * 25) / 25);
+      tape[loop_index].SetRate(hw.knob1.Process() * 2);
     }
   }
   knobs_current[1] = roundf(hw.knob2.Process() * 100) / 100;
@@ -551,7 +551,7 @@ void Controls(float audio_level) {
   }
   if (print_timer.Process()) {
     daisy_midi.sysex_printf_buffer(
-        "usage=%2.1f%% ",
+        "[Controls] usage=%2.1f%% ",
         (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f,
         audiocallback_sample_num);
     daisy_midi.sysex_printf_buffer("knob1=%2.3f ", knobs_current[0]);
@@ -564,6 +564,17 @@ void Controls(float audio_level) {
     //     audiocallback_sample_num, tape[loop_index].GetRate(),
     //     tape[loop_index].lfos[0].Value(), tape[loop_index].lfos[1].Value(),
     //     tape[loop_index].lfos[2].Value(), audio_level);
+    // for each active loop, print the rate
+    bool tape_playing = false;
+    for (size_t i = 0; i < 6; i++) {
+      if (tape[i].IsPlayingOrFading()) {
+        tape_playing = true;
+        daisy_midi.sysex_printf_buffer("%d: %2.3f", i, tape[i].GetRate());
+      }
+    }
+    if (tape_playing) {
+      daisy_midi.sysex_printf_buffer("\n");
+    }
   }
   daisy_midi.sysex_send_buffer();
 }

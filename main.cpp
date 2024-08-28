@@ -569,7 +569,7 @@ void Controls(float audio_level) {
     for (size_t i = 0; i < 6; i++) {
       if (tape[i].IsPlayingOrFading()) {
         tape_playing = true;
-        daisy_midi.sysex_printf_buffer("%d: %2.3f", i, tape[i].GetRate());
+        daisy_midi.sysex_printf_buffer("%d: %2.2f ", i, tape[i].GetRate());
       }
     }
     if (tape_playing) {

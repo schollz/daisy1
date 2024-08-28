@@ -47,18 +47,15 @@ uint8_t DMA_BUFFER_MEM_SECTION buffer_spi[4];
 using namespace daisy;
 using namespace daisysp;
 
-bool stereo_mode = true;
 DaisyPod hw;
 DaisySeed daisyseed;
 DaisyMidi daisy_midi;
-
-LFO lfotest;
 I2CHandle i2c;
 Chords chords;
 #ifdef INCLUDE_REVERB_VEC
 FVerb2 fverb2;
 #endif
-
+bool stereo_mode = true;
 float reverb_wet_dry = 0;
 
 int measure_measure_count = -1;
@@ -345,8 +342,6 @@ int main(void) {
   my_colors[4].Init(Color::PresetColor::BLUE);
   hw.led1.SetColor(my_colors[0]);
   hw.led1.Update();
-
-  lfotest.Init(10000, 1.0f, 5.0f);
 
   print_timer.Init(1.0f, AUDIO_SAMPLE_RATE / AUDIO_BLOCK_SIZE);
   bpm_measure.Init(bpm_set / 60.0f / 10, AUDIO_SAMPLE_RATE / AUDIO_BLOCK_SIZE);

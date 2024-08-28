@@ -46,7 +46,7 @@ func doConnection(filterMidiName string) (stop func(), err error) {
 		var ch, key, vel uint8
 		switch {
 		case msg.GetSysEx(&bt):
-			log.Infof("sysex=%s\n", bt)
+			fmt.Printf("%s\n", bt)
 		case msg.GetNoteStart(&ch, &key, &vel):
 			log.Infof("note_on=%s, ch=%v, vel=%v\n", midi.Note(key), ch, vel)
 		case msg.GetNoteEnd(&ch, &key):

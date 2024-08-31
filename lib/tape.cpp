@@ -241,7 +241,7 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
     head_rec.pos = buffer_start;
     // prepend the buffer start with all the samples in the circular buffer
     size_t circular_size = buf_circular.GetSize();
-    if (stereo_mode) {
+    if (is_stereo) {
       // stereo mode, add pre-roll, both channels interleaved
       for (size_t i = 0; i < circular_size; i++) {
         buf_tape[buffer_start - circular_size + i] = buf_circular.Read(i);

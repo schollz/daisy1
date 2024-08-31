@@ -20,6 +20,8 @@ Compilation options: -lang cpp -ct 1 -es 1 -mcd 16 -mdd 1024 -mdy 33 -single
 #include "core_cm7.h"
 #include "daisy_pod.h"
 #include "daisysp.h"
+//
+#include "lfo.h"
 
 class mydspSIG0 {
  private:
@@ -98,6 +100,15 @@ float DSY_SDRAM_BSS fRec34_perm[4];
 
 class FVerb2 {
  private:
+  enum FVerb2_LFO {
+    FVERB2_LFO_INPUT_DIFFISION_1,
+    FVERB2_LFO_INPUT_DIFFISION_2,
+    FVERB2_LFO_TAIL_DENSITY,
+    FVERB2_LFO_DECAY,
+    FVERB2_LFO_COUNT,
+  };
+
+  LFO lfos[FVERB2_LFO_COUNT];
   int fSampleRate;
   float fConst0;
   float fConst1;
@@ -536,6 +547,15 @@ class FVerb2 {
   virtual void init(int sample_rate) {
     classInit(sample_rate);
     instanceInit(sample_rate);
+    float period;
+    period = 10000.0f + static_cast<float>(rand() % 10000);
+    lfos[FVERB2_LFO_DECAY].Init(period, 50, 90);
+    period = 10000.0f + static_cast<float>(rand() % 10000);
+    lfos[FVERB2_LFO_INPUT_DIFFISION_1].Init(period, 50, 90);
+    period = 10000.0f + static_cast<float>(rand() % 10000);
+    lfos[FVERB2_LFO_INPUT_DIFFISION_2].Init(period, 50, 90);
+    period = 10000.0f + static_cast<float>(rand() % 10000);
+    lfos[FVERB2_LFO_TAIL_DENSITY].Init(period, 50, 90);
   }
 
   virtual void instanceInit(int sample_rate) {
@@ -624,7 +644,16 @@ class FVerb2 {
   //   }
 
   virtual void Process(int count, float* input0_ptr, float* input1_ptr,
-                       float* output0_ptr, float* output1_ptr, float wet) {
+                       float* output0_ptr, float* output1_ptr, float wet,
+                       uint32_t current_time) {
+    for (uint8_t i = 0; i < FVERB2_LFO_COUNT; i++) {
+      lfos[i].Update(current_time);
+    }
+    fHslider0 = lfos[FVERB2_LFO_DECAY].Value();
+    fHslider7 = lfos[FVERB2_LFO_TAIL_DENSITY].Value();
+    fHslider5 = lfos[FVERB2_LFO_INPUT_DIFFISION_1].Value();
+    fHslider6 = lfos[FVERB2_LFO_INPUT_DIFFISION_2].Value();
+
     float fSlow0 = fConst3 * float(fHslider0);
     float fRec8_tmp[36];
     float* fRec8 = &fRec8_tmp[4];

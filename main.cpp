@@ -164,7 +164,8 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
 #endif
 
 #ifdef INCLUDE_REVERB_VEC
-  fverb2.Process(AUDIO_BLOCK_SIZE, inl, inr, outl, outr, reverb_wet_dry);
+  fverb2.Process(AUDIO_BLOCK_SIZE, inl, inr, outl, outr, reverb_wet_dry,
+                 current_time);
 #endif
 
 #ifdef INCLUDE_COMPRESSOR

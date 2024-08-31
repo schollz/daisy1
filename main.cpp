@@ -38,10 +38,7 @@ uint8_t DMA_BUFFER_MEM_SECTION buffer_spi[4];
 #define AUDIO_BLOCK_SIZE 128
 #define AUDIO_SAMPLE_RATE 48000
 #define CROSSFADE_PREROLL 4800
-#define MAX_SECONDS 150
-#define MAX_SIZE                     \
-  (AUDIO_SAMPLE_RATE * MAX_SECONDS * \
-   2)  // 170 seconds of stereo floats at 48 khz
+#define MAX_SIZE ((1 << 24) - (1 << 20))
 #define CYCLES_AVAILBLE \
   1066666  // (400000000 * AUDIO_BLOCK_SIZE / AUDIO_SAMPLE_RATE)
 using namespace daisy;
@@ -359,6 +356,11 @@ int main(void) {
   }
   System::Delay(2000);
   daisy_midi.sysex_send_buffer();
+
+  daisy_midi.sysex_printf_buffer("tape size: %2.1f seconds",
+                                 ((float)MAX_SIZE) / 48000.0f /
+                                     (stereo_mode ? 2.0f : 1.0f) /
+                                     ((float)NUM_LOOPS));
 
   hw.SetAudioBlockSize(AUDIO_BLOCK_SIZE);
 

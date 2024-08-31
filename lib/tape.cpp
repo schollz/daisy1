@@ -275,9 +275,14 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
 
     // size of input audio is determined by rate,
     // with two extra samples for Hermite interpolation
-    size_t input_size = static_cast<size_t>(roundf(
-                            (static_cast<float>(size_deinterleaved)) * rate)) +
-                        2;
+    size_t input_size;
+    if (this->rate_input_size != 0) {
+      input_size = this->rate_input_size;
+    } else {
+      input_size = static_cast<size_t>(roundf(
+                       (static_cast<float>(size_deinterleaved)) * rate)) +
+                   2;
+    }
 
     // buffers before resampling
     float outl1[input_size];
@@ -454,6 +459,34 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
 
 void Tape::SetPan(float pan) { this->pan = pan; }
 
-void Tape::SetRate(float rate) { this->rate = rate; }
+void Tape::SetRate(float rate) {
+  this->rate = rate;
+  rate_input_size = 0;
+}
+
+void Tape::SetPitch(int pitch) {
+  // (
+  // n=128;
+  // a=Scale.chromatic;
+  // b=(a.ratios/4 * n)++(a.ratios/2 * n)++(a.ratios * n)++(a.ratios*2 *
+  // n)++(n*4); c=b.round;
+  // [(c/n).ratiomidi-(b/n).ratiomidi].plot;
+  // c.asInteger.postln;
+  // c.size.postln;
+  // )
+
+  size_t input_sizes[49] = {32,  34,  36,  38,  40,  43,  45,  48,  51,  54,
+                            57,  60,  64,  68,  72,  76,  81,  85,  91,  96,
+                            102, 108, 114, 121, 128, 136, 144, 152, 161, 171,
+                            181, 192, 203, 215, 228, 242, 256, 271, 287, 304,
+                            323, 342, 362, 384, 406, 431, 456, 483, 512};
+
+  pitch += 25;
+  if (pitch < 0 || pitch > 48) {
+    return;
+  }
+  this->rate_input_size = input_sizes[pitch];
+  this->rate = 0;
+}
 
 float Tape::GetRate() { return rate; }

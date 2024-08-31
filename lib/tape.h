@@ -57,6 +57,7 @@ class Tape {
                float *out, size_t size, uint32_t current_time);
   void SetPan(float pan);
   void SetRate(float rate);
+  void SetPitch(int pitch);
   void SetTapeStart(size_t pos);
   void SetTapeEnd(size_t pos);
   void SetPhaseStart(float phase);  // phase is 0-1
@@ -68,6 +69,7 @@ class Tape {
   size_t buffer_min = 0;
   float pan = 0;
   float rate = 1.0f;
+  size_t rate_input_size = 0;
   SampleRateConverter resampler_l;
   SampleRateConverter resampler_r;
   size_t crossfade_limit = 1000;

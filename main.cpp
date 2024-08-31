@@ -39,11 +39,11 @@ uint8_t DMA_BUFFER_MEM_SECTION buffer_spi[4];
 #define AUDIO_SAMPLE_RATE 48000
 #define CROSSFADE_PREROLL 4800
 #define MAX_SECONDS 150
-#define MAX_SIZE                                                               \
-  (AUDIO_SAMPLE_RATE * MAX_SECONDS *                                           \
-   2) // 170 seconds of stereo floats at 48 khz
-#define CYCLES_AVAILBLE                                                        \
-  1066666 // (400000000 * AUDIO_BLOCK_SIZE / AUDIO_SAMPLE_RATE)
+#define MAX_SIZE                     \
+  (AUDIO_SAMPLE_RATE * MAX_SECONDS * \
+   2)  // 170 seconds of stereo floats at 48 khz
+#define CYCLES_AVAILBLE \
+  1066666  // (400000000 * AUDIO_BLOCK_SIZE / AUDIO_SAMPLE_RATE)
 using namespace daisy;
 using namespace daisysp;
 
@@ -74,8 +74,8 @@ void writeNoteCV(uint8_t note) {
   uint16_t val = roundf(voltage / 3.235 * 4095);
   // DAC
   // // Prepare data to send
-  i2c_buffer[0] = (val >> 8) & 0x0F; // Upper 4 bits of the 12-bit value
-  i2c_buffer[1] = val & 0xFF;        // Lower 8 bits of the 12-bit value
+  i2c_buffer[0] = (val >> 8) & 0x0F;  // Upper 4 bits of the 12-bit value
+  i2c_buffer[1] = val & 0xFF;         // Lower 8 bits of the 12-bit value
 
   // Transmit the data
   // uint8_t data[2];
@@ -94,8 +94,8 @@ size_t loop_index = 0;
 Color my_colors[5];
 Tape tape[NUM_LOOPS];
 Metro print_timer;
-Metro bpm_measure;         // 4 quarer notes
-Metro bpm_measure_quarter; // 1 quarter note
+Metro bpm_measure;          // 4 quarer notes
+Metro bpm_measure_quarter;  // 1 quarter note
 
 CircularBuffer tape_circular_buffer(CROSSFADE_PREROLL);
 float DSY_SDRAM_BSS tape_linear_buffer[MAX_SIZE];
@@ -105,10 +105,8 @@ void Controls(float audio_level);
 void SetVoltage(float voltage) {
   voltage -= 0.055f;
   float val = roundf(1281.572171 * voltage - 12.21070518);
-  if (val > 4095)
-    val = 4095;
-  if (val < 0)
-    val = 0;
+  if (val > 4095) val = 4095;
+  if (val < 0) val = 0;
   daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
 }
 
@@ -374,7 +372,7 @@ int main(void) {
 
 // Deals with analog controls
 uint32_t lastPrintTime = 0;
-const uint32_t printInterval = 100; // Print every 1000 ms (1 second)
+const uint32_t printInterval = 100;  // Print every 1000 ms (1 second)
 int encoder_increment = 0;
 bool controls_changed = false;
 float knobs_last[2] = {0, 0};
@@ -428,6 +426,10 @@ void Controls(float audio_level) {
       daisy_midi.sysex_printf_buffer("encoder long press");
     } else {
       daisy_midi.sysex_printf_buffer("encoder short press");
+      // reverse audio of all tapes
+      for (uint8_t i = 0; i < 6; i++) {
+        tape[i].PlayingReverseToggle();
+      }
     }
   }
 
@@ -517,10 +519,10 @@ void Controls(float audio_level) {
 #endif
   }
   if (print_timer.Process()) {
-    daisy_midi.sysex_printf_buffer("[Controls] usage=%2.1f%% ",
-                                   (float)audiocallback_time_needed /
-                                       CYCLES_AVAILBLE * 100.0f,
-                                   audiocallback_sample_num);
+    daisy_midi.sysex_printf_buffer(
+        "[Controls] usage=%2.1f%% ",
+        (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f,
+        audiocallback_sample_num);
     daisy_midi.sysex_printf_buffer("knob1=%2.3f ", knobs_current[0]);
     daisy_midi.sysex_printf_buffer("knob2=%2.3f\n", knobs_current[1]);
     // daisy_midi.sysex_printf_buffer(

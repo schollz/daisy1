@@ -61,7 +61,7 @@ float noteNumberToVoltage(uint8_t note) {
   return (((float)note) - 48.0f) / 12.0f;
 }
 
-uint8_t DMA_BUFFER_MEM_SECTION i2c_buffer[100];
+uint8_t DMA_BUFFER_MEM_SECTION i2c_buffer[2];
 void writeNoteCV(uint8_t note) {
   float voltage = noteNumberToVoltage(note);
   uint16_t val = roundf(voltage / 3.235 * 4095);

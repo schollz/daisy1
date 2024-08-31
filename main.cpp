@@ -1,6 +1,5 @@
 #include <cstdio>
 #include <cstring>
-// #include <map>
 #include <vector>
 // definitions
 // #define INCLUDE_REVERB
@@ -38,7 +37,7 @@ uint8_t DMA_BUFFER_MEM_SECTION buffer_spi[4];
 #define AUDIO_BLOCK_SIZE 128
 #define AUDIO_SAMPLE_RATE 48000
 #define CROSSFADE_PREROLL 4800
-#define MAX_SIZE ((1 << 24) - (1 << 20))
+#define MAX_SIZE 15899648
 #define CYCLES_AVAILBLE \
   1066666  // (400000000 * AUDIO_BLOCK_SIZE / AUDIO_SAMPLE_RATE)
 using namespace daisy;

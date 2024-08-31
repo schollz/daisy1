@@ -1,6 +1,7 @@
 
 #include "tape.h"
 
+#define POST_ROLL_FRACTION 0.875f
 // Reset can be used to change between stereo and mono
 void Tape::Reset(CircularBuffer &buf_circular, float sample_rate,
                  bool is_stereo) {
@@ -16,7 +17,8 @@ void Tape::Init(size_t endpoints[2], CircularBuffer &buf_circular,
     this->endpoints[i] = (endpoints[i] / 2) * 2;
   }
   buffer_min = this->endpoints[0] + buf_circular.GetSize();
-  buffer_max = buffer_min + (7 * (this->endpoints[1] - buffer_min) / 8);
+  buffer_max =
+      buffer_min + ((this->endpoints[1] - buffer_min) * POST_ROLL_FRACTION);
   if (is_stereo) {
     // make sure it is a power of two
     buffer_max = (buffer_max / 2) * 2;
@@ -87,7 +89,7 @@ void Tape::SetTapeEnd(size_t pos) {
     pos = (pos / 2) * 2;
   }
   buffer_end = pos;
-  crossfade_limit = (buffer_end - buffer_start) / 8;
+  crossfade_limit = (buffer_end - buffer_start) * (1.0f - POST_ROLL_FRACTION);
   if (crossfade_limit < 256) {
     crossfade_limit = 256;
   } else if (crossfade_limit > 48000 * 3) {

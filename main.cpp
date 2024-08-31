@@ -1,6 +1,3 @@
-#include <cstdio>
-#include <cstring>
-#include <vector>
 // definitions
 // #define INCLUDE_REVERB
 #define INCLUDE_REVERB_VEC

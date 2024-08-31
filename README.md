@@ -1,4 +1,5 @@
 # daisy1
+
 First thing with daisy
 
 ## prequisites
@@ -14,7 +15,7 @@ Build openocd
 ```
 git clone https://git.code.sf.net/p/openocd/code openocd-code
 cd openocd-code/
-./bootstrap 
+./bootstrap
 ./configure --enable-stlink
 make -j8
 sudo make install
@@ -27,14 +28,14 @@ cd dev/udev-rules
 sudo cp *.* /etc/udev/rules.d/
 sudo systemctl reload udev
 sudo udevadm trigger
-````
+```
 
 Install libncurses5-dev and lib32ncurses5-dev
 
 ```
 wget http://archive.ubuntu.com/ubuntu/pool/universe/n/ncurses/libtinfo5_6.4-2_amd64.deb && sudo dpkg -i libtinfo5_6.4-2_amd64.deb && rm -f libtinfo5_6.4-2_amd64.deb
 wget http://archive.ubuntu.com/ubuntu/pool/universe/n/ncurses/libncurses5_6.4-2_amd64.deb && sudo dpkg -i libncurses5_6.4-2_amd64.deb && rm -f libncurses5_6.4-2_amd64.deb
-sudo apt install lib32ncurses5-dev libncurses5 libncurses5-dev -y 
+sudo apt install lib32ncurses5-dev libncurses5 libncurses5-dev -y
 ```
 
 Install `arm-none-eabi-gcc` (correct version):
@@ -59,19 +60,34 @@ export PATH=~/bin/gcc-arm-none-eabi-10-2020-q4-major/bin:$PATH
 ```
 git clone https://github.com/schollz/daisy1
 cd daisy1
-git submodule update --init --recursive 
+git submodule update --init --recursive
 cd libDaisy && make all -j8
 cd DaisySP && make all -j8
 ```
 
 ## building
 
-
 ```
-make 
+make
 ```
 
 ## uploading
+
+If `APP_TYPE=BOOT_SRAM` is enabled in the `Makefile` then:
+
+Hold boot, press reset and then:
+
+```
+> make program-boot
+```
+
+Now, press reset and then quickly press boot and then upload:
+
+```
+> make program-dfu
+```
+
+If `APP_TYPE=BOOT_FLASH` is disabled in the `Makefile` then:
 
 ```
 make program
@@ -79,10 +95,20 @@ make program
 
 ## logging
 
+Use
+
+```
+make midicom
+```
+
+for debugging.
+
 after `make program`, run
 
 ```
+
 while true; do; screen /dev/ttyACM0; sleep 0.5; done
+
 ```
 
 ## debugging
@@ -90,18 +116,25 @@ while true; do; screen /dev/ttyACM0; sleep 0.5; done
 (make sure you have `openocd` installed).
 
 ```
+
 make debug
-```
-
-
-## TODO: 
 
 ```
+
+## TODO:
+
+```
+
 sndWet = DelayN.ar(sndWet, 0.03, 0.03);
 sndWet = sndWet + PitchShift.ar(sndWet, 0.13, 2,0,1,1*shimmer/2);
 sndWet = sndWet + PitchShift.ar(sndWet, 0.1, 4,0,1,0.5*shimmer/2);
 sndWet = Fverb2.ar(sndWet[0],sndWet[1],200,
-    decay:LFNoise2.kr(1/5).range(60,90),
-    tail_density:LFNoise2.kr(1/5).range(70,90),
+decay:LFNoise2.kr(1/5).range(60,90),
+tail_density:LFNoise2.kr(1/5).range(70,90),
 );
+
+```
+
+```
+
 ```

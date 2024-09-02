@@ -11,6 +11,7 @@
 #include "lib/i2c_fifo.h"
 #include "lib/i2c_slave.h"
 
+static const uint TRANSFER_SIZE = 8;
 static const uint I2C_SLAVE_ADDRESS = 0x28;
 static const uint I2C_BAUDRATE = 400000;  // 100 kHz
 
@@ -37,26 +38,22 @@ static void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
     case I2C_SLAVE_RECEIVE:  // master has written some data
       if (!context.mem_address_written) {
         // writes always start with the memory address
-        context.mem_address = i2c_read_byte(i2c);
+        context.mem_address = 0;
         context.mem_address_written = true;
-      } else {
-        // save into memory
-        context.mem[context.mem_address] = i2c_read_byte(i2c);
-        context.mem_address++;
       }
+      // save into memory
+      context.mem[context.mem_address] = i2c_read_byte(i2c);
+      context.mem_address++;
       break;
     case I2C_SLAVE_REQUEST:  // master is requesting data
-      printf("I2C_SLAVE_REQUEST\n");
       // load from memory
-      i2c_write_byte(i2c, context.mem[context.mem_address - 2]);
-      i2c_write_byte(i2c, context.mem[context.mem_address - 1]);
-      context.mem_address++;
+      for (int i = 0; i < context.mem_address; i++) {
+        i2c_write_byte(i2c, context.mem[i]);
+      }
+      context.mem_address_written = false;
       break;
     case I2C_SLAVE_FINISH:  // master has signalled Stop / Restart
       context.mem_address_written = false;
-      // print the last 2 bytes written
-      printf("0x%02x 0x%02x\n", context.mem[context.mem_address - 2],
-             context.mem[context.mem_address - 1]);
       break;
     default:
       break;

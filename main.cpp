@@ -71,7 +71,7 @@ float noteNumberToVoltage(uint8_t note) {
   return (((float)note) - 48.0f) / 12.0f;
 }
 
-uint8_t DMA_BUFFER_MEM_SECTION i2c_buffer[8];
+uint8_t DMA_BUFFER_MEM_SECTION i2c_buffer[64];
 void writeNoteCV(uint8_t note) {
   float voltage = noteNumberToVoltage(note);
   uint16_t val = roundf(voltage / 3.235 * 4095);
@@ -404,7 +404,7 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
 
 uint8_t DMA_BUFFER_MEM_SECTION tx_data[2] = {0x01,
                                              0x02};  // Example data to send
-uint8_t DMA_BUFFER_MEM_SECTION rx_data[2];
+uint8_t DMA_BUFFER_MEM_SECTION rx_data[64];
 
 bool i2c_tx_done = false;
 bool i2c_rx_done = false;
@@ -556,27 +556,33 @@ int main(void) {
   hw.StartAdc();
   hw.StartAudio(AudioCallback);
 
+#define TRANSFER_SIZE 8
+
   while (1) {
     // every second transmit data
-    i2c_buffer[0] = 0x28;
-    i2c_buffer[1] = rand() % 255;
-    i2c_buffer[2] = rand() % 255;
-    i2c.TransmitDma(0x28, i2c_buffer, 3, NULL, NULL);
-    daisy_midi.sysex_printf_buffer("transmitted %d %d\n", i2c_buffer[1],
-                                   i2c_buffer[2]);
+    daisy_midi.sysex_printf_buffer("send ");
+    for (size_t i = 0; i < TRANSFER_SIZE; i++) {
+      i2c_buffer[i] = rand() % 255;
+      daisy_midi.sysex_printf_buffer("%d ", i2c_buffer[i]);
+    }
+    daisy_midi.sysex_printf_buffer("\n");
     daisy_midi.sysex_send_buffer();
+    i2c.TransmitBlocking(0x28, i2c_buffer, TRANSFER_SIZE, 1000);
+    // i2c.TransmitDma(0x28, i2c_buffer, TRANSFER_SIZE, NULL, NULL);
     // request data
-    rx_data[0] = 0;
-    rx_data[1] = 0;
-    I2CHandle::Result res = i2c.ReceiveBlocking(0x28, rx_data, 2, 1000);
+    I2CHandle::Result res =
+        i2c.ReceiveBlocking(0x28, rx_data, TRANSFER_SIZE, 1000);
     if (res == I2CHandle::Result::OK) {
-      daisy_midi.sysex_printf_buffer("received %d %d\n", rx_data[0],
-                                     rx_data[1]);
+      daisy_midi.sysex_printf_buffer("recv ");
+      for (size_t i = 0; i < TRANSFER_SIZE; i++) {
+        daisy_midi.sysex_printf_buffer("%d ", rx_data[i]);
+      }
+      daisy_midi.sysex_printf_buffer("\n");
     } else {
       daisy_midi.sysex_printf_buffer("error %d\n", res);
     }
     daisy_midi.sysex_send_buffer();
-    System::Delay(1500);
+    System::Delay(100);
 
 #ifdef INCLUDE_SDCARD
     if (main_thread_do_save) {

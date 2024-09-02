@@ -283,6 +283,7 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
         // continue to write until crossfade_limit away from the buffer end
         if (head_rec.state_time >= crossfade_limit) {
           head_rec.SetState(TapeHead::STOPPED);
+          has_recorded = true;
         }
       }
     }
@@ -511,3 +512,5 @@ void Tape::SetPitch(int pitch) {
 }
 
 float Tape::GetRate() { return rate; }
+
+bool Tape::IsRecorded() { return has_recorded; }

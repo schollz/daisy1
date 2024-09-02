@@ -111,6 +111,41 @@ void SetVoltage(float voltage) {
 }
 
 #define TEST_FILE_NAME "test.bin"
+
+struct WAVHeader {
+  char chunkID[4];         // "RIFF"
+  uint32_t chunkSize;      // Size of the entire file minus 8 bytes
+  char format[4];          // "WAVE"
+  char subChunk1ID[4];     // "fmt "
+  uint32_t subChunk1Size;  // 16 for PCM
+  uint16_t audioFormat;    // 3 for IEEE float
+  uint16_t numChannels;    // 1 for mono, 2 for stereo
+  uint32_t sampleRate;     // e.g., 48000
+  uint32_t byteRate;       // sampleRate * numChannels * bytesPerSample
+  uint16_t blockAlign;     // numChannels * bytesPerSample
+  uint16_t bitsPerSample;  // 32 for float
+  char subChunk2ID[4];     // "data"
+  uint32_t subChunk2Size;  // numSamples * numChannels * bytesPerSample
+};
+
+void createWAVHeader(WAVHeader &header, uint32_t numSamples,
+                     uint32_t sampleRate, uint16_t numChannels) {
+  memcpy(header.chunkID, "RIFF", 4);
+  memcpy(header.format, "WAVE", 4);
+  memcpy(header.subChunk1ID, "fmt ", 4);
+  header.subChunk1Size = 16;
+  header.audioFormat = 3;  // IEEE float
+  header.numChannels = numChannels;
+  header.sampleRate = sampleRate;
+  header.bitsPerSample = 32;
+  header.blockAlign = numChannels * (header.bitsPerSample / 8);
+  header.byteRate = sampleRate * header.blockAlign;
+  memcpy(header.subChunk2ID, "data", 4);
+  header.subChunk2Size = numSamples * numChannels * sizeof(float);
+  header.chunkSize =
+      4 + (8 + header.subChunk1Size) + (8 + header.subChunk2Size);
+}
+
 void sdcard_write_or_read(bool do_write) {
   // Init SD Card
   SdmmcHandler::Config sd_cfg;
@@ -156,6 +191,31 @@ void sdcard_write_or_read(bool do_write) {
       f_write(&SDFile, tape_linear_buffer, MAX_SIZE * 4, &byteswritten);
       total_bytes += byteswritten;
       f_close(&SDFile);
+    }
+    // write all the recorded loops to wav files
+    for (size_t i = 0; i < NUM_LOOPS; i++) {
+      if (!tape[i].IsRecorded()) {
+        continue;
+      }
+      char filePath[20];
+      sprintf(filePath, "loop%d.wav", i);
+      WAVHeader header;
+      uint32_t numSamples =
+          (tape[i].buffer_end - tape[i].buffer_start) / (stereo_mode ? 2 : 1);
+      uint16_t numChannels = stereo_mode ? 2 : 1;
+      createWAVHeader(header, numSamples, AUDIO_SAMPLE_RATE, numChannels);
+      // Open the file for writing
+      if (f_open(&SDFile, filePath, FA_WRITE | FA_CREATE_ALWAYS) == FR_OK) {
+        // Write the WAV header to the file
+        f_write(&SDFile, &header, sizeof(WAVHeader), &byteswritten);
+
+        // Write the specified range of float data to the file
+        f_write(&SDFile, tape_linear_buffer + tape[i].buffer_start,
+                numSamples * numChannels * sizeof(float), &byteswritten);
+
+        // Close the file
+        f_close(&SDFile);
+      }
     }
   } else {
     if (f_open(&SDFile, TEST_FILE_NAME, FA_READ) == FR_OK) {

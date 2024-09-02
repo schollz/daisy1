@@ -51,6 +51,7 @@ class Tape {
   bool IsPlaying();
   bool IsStopping();
   bool IsPlayingOrFading();
+  bool IsRecorded();
   void PlayingFadeOut();
   size_t PlayingCut(size_t pos);
   void PlayingStart();
@@ -72,6 +73,7 @@ class Tape {
   float GetRate();
 
  private:
+  bool has_recorded = false;
   SampleRateConverter resampler_l;
   SampleRateConverter resampler_r;
   size_t crossfade_limit = 1000;

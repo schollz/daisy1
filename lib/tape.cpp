@@ -147,6 +147,17 @@ bool Tape::IsPlaying() {
   return is_playing;
 }
 
+bool Tape::IsStopping() {
+  bool is_stopping = false;
+  for (size_t i = 0; i < TAPE_PLAY_HEADS; i++) {
+    if (head_play[i].IsState(TapeHead::STOPPING)) {
+      is_stopping = true;
+      break;
+    }
+  }
+  return is_stopping;
+}
+
 bool Tape::IsPlayingOrFading() {
   bool is_playing = false;
   for (size_t i = 0; i < TAPE_PLAY_HEADS; i++) {
@@ -170,8 +181,7 @@ void Tape::PlayingReverseToggle() {
 
 void Tape::PlayingFadeOut() {
   for (size_t i = 0; i < TAPE_PLAY_HEADS; i++) {
-    if (head_play[i].IsState(TapeHead::STARTED) ||
-        head_play[i].IsState(TapeHead::STARTING)) {
+    if (!head_play[i].IsState(TapeHead::STOPPED)) {
       head_play[i].SetState(TapeHead::STOPPING);
     }
   }
@@ -201,7 +211,7 @@ size_t Tape::PlayingCut(size_t pos) {
 void Tape::PlayingStart() { PlayingCut(head_play_last_pos); }
 
 void Tape::PlayingToggle() {
-  if (IsPlaying()) {
+  if (IsPlayingOrFading()) {
     PlayingStop();
   } else {
     PlayingStart();
@@ -420,15 +430,15 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
       head_play_last_pos = head_play_last_pos_before_peek;
     }
 
-    // apply amplitude modulation
-    lfos[TAPE_LFO_AMP].Update(current_time);
-    float val = lfos[TAPE_LFO_AMP].Value();
-    for (size_t i = 0; i < input_size; i++) {
-      outl1[i] = outl1[i] * val;
-      if (is_stereo) {
-        outr1[i] = outr1[i] * val;
-      }
-    }
+    // // apply amplitude modulation
+    // lfos[TAPE_LFO_AMP].Update(current_time);
+    // float val = lfos[TAPE_LFO_AMP].Value();
+    // for (size_t i = 0; i < input_size; i++) {
+    //   outl1[i] = outl1[i] * val;
+    //   if (is_stereo) {
+    //     outr1[i] = outr1[i] * val;
+    //   }
+    // }
 
     // apply resampling which will resize `out*1` into `out*2`
     // where `out*2` is the correct number of samples to send out

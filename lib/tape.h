@@ -29,9 +29,14 @@ class Tape {
   TapeHead head_rec;
   TapeHead head_play[TAPE_PLAY_HEADS];
   size_t head_play_last_pos = 0;
+  size_t buffer_min = 0;
   size_t buffer_max = 1000;
   size_t buffer_start = 1000;
   size_t buffer_end = buffer_start + buffer_max;
+  float pan = 0;
+  float rate = 1.0f;
+  size_t rate_input_size = 0;
+
   std::bitset<TAPE_FLAG_COUNT> flags;
   LFO lfos[TAPE_LFO_COUNT];
 
@@ -44,6 +49,7 @@ class Tape {
   void RecordingToggle();
   bool IsRecording();
   bool IsPlaying();
+  bool IsStopping();
   bool IsPlayingOrFading();
   void PlayingFadeOut();
   size_t PlayingCut(size_t pos);
@@ -66,10 +72,6 @@ class Tape {
   float GetRate();
 
  private:
-  size_t buffer_min = 0;
-  float pan = 0;
-  float rate = 1.0f;
-  size_t rate_input_size = 0;
   SampleRateConverter resampler_l;
   SampleRateConverter resampler_r;
   size_t crossfade_limit = 1000;

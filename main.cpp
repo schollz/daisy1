@@ -125,45 +125,64 @@ void sdcard_write_or_read(bool do_write) {
   f_mount(&fsi.GetSDFileSystem(), "/", 1);
 
   uint32_t current_time = System::GetNow();
+  size_t total_bytes = 0;
   size_t byteswritten;
+
+  struct Data {
+    uint64_t min;
+    uint64_t max;
+    uint64_t start;
+    uint64_t end;
+    float pan;
+    float rate;
+    int32_t rate_input_size;
+  };
+
   if (do_write) {
-    tape_linear_buffer[0] = 1.234f;
-    tape_linear_buffer[1] = 2.345f;
-    tape_linear_buffer[2] = 3.456f;
-    tape_linear_buffer[3] = 4.567f;
-    tape_linear_buffer[4] = 5.678f;
-    tape_linear_buffer[5] = 6.789f;
     if (f_open(&SDFile, TEST_FILE_NAME, (FA_CREATE_ALWAYS) | (FA_WRITE)) ==
         FR_OK) {
-      // write the entire tape_linear_buffer (which is float)
+      Data dataArray[NUM_LOOPS];
+      for (size_t i = 0; i < NUM_LOOPS; i++) {
+        dataArray[i].min = tape[i].buffer_min;
+        dataArray[i].max = tape[i].buffer_max;
+        dataArray[i].start = tape[i].buffer_start;
+        dataArray[i].end = tape[i].buffer_end;
+        dataArray[i].pan = tape[i].pan;
+        dataArray[i].rate = tape[i].rate;
+        dataArray[i].rate_input_size = tape[i].rate_input_size;
+      }
+      f_write(&SDFile, dataArray, NUM_LOOPS * sizeof(Data), &byteswritten);
+      total_bytes += byteswritten;
       f_write(&SDFile, tape_linear_buffer, MAX_SIZE * 4, &byteswritten);
+      total_bytes += byteswritten;
       f_close(&SDFile);
     }
-
-    // read back the first 5 floats
-    float test_buffer[5];
-    if (f_open(&SDFile, TEST_FILE_NAME, FA_READ) == FR_OK) {
-      f_read(&SDFile, test_buffer, 5 * 4, &byteswritten);
-      f_close(&SDFile);
-    }
-    for (size_t i = 0; i < 5; i++) {
-      daisy_midi.sysex_printf_buffer("%2.2f %2.2f\n", tape_linear_buffer[i],
-                                     test_buffer[i]);
-    }
-    daisy_midi.sysex_send_buffer();
   } else {
     if (f_open(&SDFile, TEST_FILE_NAME, FA_READ) == FR_OK) {
+      Data dataArray[NUM_LOOPS];
+      f_read(&SDFile, dataArray, NUM_LOOPS * sizeof(Data), &byteswritten);
+      for (size_t i = 0; i < NUM_LOOPS; i++) {
+        tape[i].buffer_min = dataArray[i].min;
+        tape[i].buffer_max = dataArray[i].max;
+        tape[i].SetTapeStart(dataArray[i].start);
+        tape[i].SetTapeEnd(dataArray[i].end);
+        tape[i].pan = dataArray[i].pan;
+        tape[i].rate = dataArray[i].rate;
+        tape[i].rate_input_size = dataArray[i].rate_input_size;
+      }
+      total_bytes += byteswritten;
       f_read(&SDFile, tape_linear_buffer, MAX_SIZE, &byteswritten);
+      total_bytes += byteswritten;
       f_close(&SDFile);
     }
   }
   uint32_t finish_time = System::GetNow() - current_time;
 
   if (do_write) {
-    daisy_midi.sysex_printf_buffer("wrote %d bytes in %d ms", byteswritten,
+    daisy_midi.sysex_printf_buffer("wrote %d bytes in %d ms", total_bytes,
                                    finish_time);
   } else {
-    daisy_midi.sysex_printf_buffer("read %d bytes in %d ms", byteswritten,
+    daisy_midi.sysex_printf_buffer("read %d bytes in %d ms", total_bytes,
                                    finish_time);
   }
   daisy_midi.sysex_send_buffer();
@@ -552,15 +571,20 @@ void Controls(float audio_level) {
         "[Controls] usage=%2.1f%% ",
         (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f,
         audiocallback_sample_num);
+    daisy_midi.sysex_printf_buffer(
+        "(%d,%d,%d,%d) ", tape[loop_index].IsStopping(),
+        tape[loop_index].IsPlaying(), tape[loop_index].IsPlayingOrFading(),
+        tape[loop_index].IsRecording());
     daisy_midi.sysex_printf_buffer("knob1=%2.3f ", knobs_current[0]);
     daisy_midi.sysex_printf_buffer("knob2=%2.3f\n", knobs_current[1]);
     // daisy_midi.sysex_printf_buffer(
     //     "%d, knob1=%2.3f knob2=%2.3f, enc=%d, usage=%2.1f%% per %d "
-    //     "samples, rate=%2.3f, pan=%2.2f, amp=%2.2f, lpf=%2.2f, audio=%2.4f",
-    //     loop_index, knobs_current[0], knobs_current[1], encoder_increment,
-    //     (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f,
-    //     audiocallback_sample_num, tape[loop_index].GetRate(),
-    //     tape[loop_index].lfos[0].Value(), tape[loop_index].lfos[1].Value(),
+    //     "samples, rate=%2.3f, pan=%2.2f, amp=%2.2f, lpf=%2.2f,
+    //     audio=%2.4f", loop_index, knobs_current[0], knobs_current[1],
+    //     encoder_increment, (float)audiocallback_time_needed /
+    //     CYCLES_AVAILBLE * 100.0f, audiocallback_sample_num,
+    //     tape[loop_index].GetRate(), tape[loop_index].lfos[0].Value(),
+    //     tape[loop_index].lfos[1].Value(),
     //     tape[loop_index].lfos[2].Value(), audio_level);
     // for each active loop, print the rate
     bool tape_playing = false;

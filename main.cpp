@@ -53,7 +53,8 @@ SdmmcHandler sd;
 FatFSInterface fsi;
 FIL SDFile;
 
-bool audio_stopped = false;
+bool main_thread_do_save = false;
+bool main_thread_do_load = false;
 bool stereo_mode = true;
 float reverb_wet_dry = 0;
 
@@ -110,30 +111,11 @@ void SetVoltage(float voltage) {
 }
 
 #define TEST_FILE_NAME "test.bin"
-bool sdcard_test_done = false;
-void sdcard_test() {
-  // Vars and buffs.
-  char outbuff[1024];
-  char inbuff[1024];
-  size_t len, failcnt, byteswritten;
-  sprintf(outbuff, "Daisy...Testing...\n1...\n2...\n3...\n");
-  memset(inbuff, 0, 1024);
-  len = strlen(outbuff);
-  failcnt = 0;
-
-  Color red;
-  red.Init(Color::PresetColor::RED);
-  Color green;
-  green.Init(Color::PresetColor::GREEN);
-  Color yellow;
-  yellow.Init(0.9f, 0.9f, 0.0f);
-
-  hw.led1.SetColor(yellow);
-  hw.led1.Update();
-
+void sdcard_write_or_read(bool do_write) {
   // Init SD Card
   SdmmcHandler::Config sd_cfg;
   sd_cfg.Defaults();
+  sd_cfg.speed = SdmmcHandler::Speed::FAST;
   sd.Init(sd_cfg);
 
   // Links libdaisy i/o to fatfs driver.
@@ -142,40 +124,48 @@ void sdcard_test() {
   // Mount SD Card
   f_mount(&fsi.GetSDFileSystem(), "/", 1);
 
-  // Open and write the test file to the SD Card.
-  // time writing
   uint32_t current_time = System::GetNow();
-  if (f_open(&SDFile, TEST_FILE_NAME, (FA_CREATE_ALWAYS) | (FA_WRITE)) ==
-      FR_OK) {
-    f_write(&SDFile, outbuff, len, &byteswritten);
-    f_close(&SDFile);
-  }
-  uint32_t write_time = System::GetNow() - current_time;
+  size_t byteswritten;
+  if (do_write) {
+    tape_linear_buffer[0] = 1.234f;
+    tape_linear_buffer[1] = 2.345f;
+    tape_linear_buffer[2] = 3.456f;
+    tape_linear_buffer[3] = 4.567f;
+    tape_linear_buffer[4] = 5.678f;
+    tape_linear_buffer[5] = 6.789f;
+    if (f_open(&SDFile, TEST_FILE_NAME, (FA_CREATE_ALWAYS) | (FA_WRITE)) ==
+        FR_OK) {
+      // write the entire tape_linear_buffer (which is float)
+      f_write(&SDFile, tape_linear_buffer, MAX_SIZE * 4, &byteswritten);
+      f_close(&SDFile);
+    }
 
-  // Read back the test file from the SD Card.
-  if (f_open(&SDFile, TEST_FILE_NAME, FA_READ) == FR_OK) {
-    f_read(&SDFile, inbuff, len, &byteswritten);
-    f_close(&SDFile);
-  }
-
-  // Check for sameness.
-  for (size_t i = 0; i < len; i++) {
-    if (inbuff[i] != outbuff[i]) {
-      failcnt++;
+    // read back the first 5 floats
+    float test_buffer[5];
+    if (f_open(&SDFile, TEST_FILE_NAME, FA_READ) == FR_OK) {
+      f_read(&SDFile, test_buffer, 5 * 4, &byteswritten);
+      f_close(&SDFile);
+    }
+    for (size_t i = 0; i < 5; i++) {
+      daisy_midi.sysex_printf_buffer("%2.2f %2.2f\n", tape_linear_buffer[i],
+                                     test_buffer[i]);
+    }
+    daisy_midi.sysex_send_buffer();
+  } else {
+    if (f_open(&SDFile, TEST_FILE_NAME, FA_READ) == FR_OK) {
+      f_read(&SDFile, tape_linear_buffer, MAX_SIZE, &byteswritten);
+      f_close(&SDFile);
     }
   }
+  uint32_t finish_time = System::GetNow() - current_time;
 
-  // If what was read does not match
-  // what was written execution will stop.
-  if (failcnt) {
-    hw.led1.SetColor(red);
+  if (do_write) {
+    daisy_midi.sysex_printf_buffer("wrote %d bytes in %d ms", byteswritten,
+                                   finish_time);
   } else {
-    hw.led1.SetColor(green);
+    daisy_midi.sysex_printf_buffer("read %d bytes in %d ms", byteswritten,
+                                   finish_time);
   }
-  hw.led1.Update();
-
-  daisy_midi.sysex_printf_buffer("SD Card Test failcnt = %d in %d ms", failcnt,
-                                 write_time);
   daisy_midi.sysex_send_buffer();
 }
 
@@ -335,51 +325,6 @@ int main(void) {
   fverb2.init(AUDIO_SAMPLE_RATE);
 #endif
 
-  // // Handle we'll use to interact with SPI
-  // SpiHandle spi_handle;
-
-  // // Structure to configure the SPI handle
-  // SpiHandle::Config spi_conf;
-
-  // spi_conf.mode = SpiHandle::Config::Mode::MASTER;  // we're in charge
-
-  // spi_conf.periph =
-  //     SpiHandle::Config::Peripheral::SPI_1;  // Use the SPI_1 Peripheral
-
-  // // Pins to use. These must be available on the selected peripheral
-  // spi_conf.pin_config.sclk = seed::D8;
-  // spi_conf.pin_config.miso = seed::D9;
-  // spi_conf.pin_config.mosi = seed::D10;
-  // spi_conf.pin_config.nss = seed::D7;
-
-  // // define speed
-  // // 25 MHz / 2 = 12.5 MHz
-  // spi_conf.baud_prescaler = SpiHandle::Config::BaudPrescaler::PS_2;
-
-  // // data will flow in both directions
-  // spi_conf.direction = SpiHandle::Config::Direction::TWO_LINES;
-
-  // // // The master will output on the NSS line
-  // spi_conf.nss = SpiHandle::Config::NSS::HARD_OUTPUT;
-
-  // // spi_conf.clock_polarity = SpiHandle::Config::ClockPolarity::HIGH;
-  // // spi_conf.clock_phase = SpiHandle::Config::ClockPhase::ONE_EDGE;
-
-  // // Initialize the SPI Handle
-  // spi_handle.Init(spi_conf);
-
-  // // loop forever
-  // while (1) {
-  //   // put these four bytes in a buffer
-  //   buffer_spi[0] = 0x01;
-  //   buffer_spi[1] = 0x02;
-  //   buffer_spi[2] = 0x03;
-  //   buffer_spi[3] = 0x04;
-  //   spi_handle.BlockingTransmit(buffer_spi, 4);
-  //   // wait 500 ms
-  //   System::Delay(500);
-  // }
-
 #ifdef INCLUDE_AUDIO_PROFILING
   // setup measurement
   // https://forum.electro-smith.com/t/solved-how-to-do-mcu-utilization-measurements/1236
@@ -444,10 +389,14 @@ int main(void) {
 
   while (1) {
     System::Delay(1000);
-    if (audio_stopped) {
+    if (main_thread_do_save) {
       System::Delay(1000);
-      sdcard_test();
-      audio_stopped = false;
+      sdcard_write_or_read(true);
+      main_thread_do_save = false;
+    } else if (main_thread_do_load) {
+      System::Delay(1000);
+      sdcard_write_or_read(false);
+      main_thread_do_load = false;
     }
   }
 }
@@ -506,21 +455,10 @@ void Controls(float audio_level) {
   if (hw.encoder.FallingEdge()) {
     if (button_time_pressed[2] > 400) {
       daisy_midi.sysex_printf_buffer("encoder long press");
+      main_thread_do_load = true;
     } else {
       daisy_midi.sysex_printf_buffer("encoder short press");
-      audio_stopped = true;
-      // daisy_midi.sysex_printf_buffer("\n stop audio\n");
-      // daisy_midi.sysex_send_buffer();
-      // hw.StopAudio();
-      // System::Delay(1000);
-      // daisy_midi.sysex_printf_buffer("starting audio\n");
-      // daisy_midi.sysex_send_buffer();
-      // hw.StartAudio(AudioCallback);
-      // return;
-      // // reverse audio of all tapes
-      // for (uint8_t i = 0; i < 6; i++) {
-      //   tape[i].PlayingReverseToggle();
-      // }
+      main_thread_do_save = true;
     }
   }
 

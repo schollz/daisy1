@@ -4,11 +4,14 @@
 // #define INCLUDE_COMPRESSOR
 // #define INCLUDE_SEQUENCER
 // #define INCLUDE_TAPE_LPF
+// #define INCLUDE_SDCARD
 //
 #include "core_cm7.h"
 #include "daisy_pod.h"
 #include "daisysp.h"
+#ifdef INCLUDE_SDCARD
 #include "fatfs.h"
+#endif
 //
 #include "lib/chords.h"
 #include "lib/daisy_midi.h"
@@ -68,7 +71,7 @@ float noteNumberToVoltage(uint8_t note) {
   return (((float)note) - 48.0f) / 12.0f;
 }
 
-uint8_t DMA_BUFFER_MEM_SECTION i2c_buffer[2];
+uint8_t DMA_BUFFER_MEM_SECTION i2c_buffer[8];
 void writeNoteCV(uint8_t note) {
   float voltage = noteNumberToVoltage(note);
   uint16_t val = roundf(voltage / 3.235 * 4095);
@@ -147,7 +150,7 @@ struct WAVHeader {
   uint32_t cksize3;  // Chunk size: M*Nc*Ns
 };
 
-void createWAVHeader(WAVHeader &header, uint32_t numSamples,
+void createWAVHeader(WAVHeader& header, uint32_t numSamples,
                      uint32_t sampleRate, uint16_t numChannels) {
   uint32_t F = sampleRate;    // sample rate
   uint32_t M = 4;             // 4 bytes per float
@@ -169,6 +172,7 @@ void createWAVHeader(WAVHeader &header, uint32_t numSamples,
   header.cksize3 = M * Nc * Ns;
 }
 
+#ifdef INCLUDE_SDCARD
 void sdcard_write_or_read(bool do_write) {
   // Init SD Card
   SdmmcHandler::Config sd_cfg;
@@ -315,6 +319,7 @@ void sdcard_write_or_read(bool do_write) {
   }
   daisy_midi.sysex_send_buffer();
 }
+#endif
 
 size_t audiocallback_sample_num = 0;
 uint32_t audiocallback_time_needed = 0;
@@ -397,6 +402,23 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
 #endif
 }
 
+uint8_t DMA_BUFFER_MEM_SECTION tx_data[2] = {0x01,
+                                             0x02};  // Example data to send
+uint8_t DMA_BUFFER_MEM_SECTION rx_data[2];
+
+bool i2c_tx_done = false;
+bool i2c_rx_done = false;
+
+void I2C_TxCallback(void* context) { i2c_tx_done = true; }
+
+void I2C_RxCallback(void* context, I2CHandle::Result result) {
+  if (result == I2CHandle::Result::OK) {
+    i2c_rx_done = true;
+  } else {
+    // Handle error
+  }
+}
+
 int main(void) {
   hw.Init();
 
@@ -413,7 +435,7 @@ int main(void) {
       });
   daisy_midi.SetMidiTimingCallback(
       []() { daisy_midi.sysex_printf_buffer("midi timing"); });
-  daisy_midi.SetSysExCallback([](const uint8_t *data, size_t size) {
+  daisy_midi.SetSysExCallback([](const uint8_t* data, size_t size) {
     if (size == 3 && data[0] == 'a' && data[1] == 'b' && data[2] == 'c') {
       daisy_midi.sysex_printf_buffer("got abc");
     } else {
@@ -535,7 +557,21 @@ int main(void) {
   hw.StartAudio(AudioCallback);
 
   while (1) {
-    System::Delay(1000);
+    // every second transmit data
+    i2c_buffer[0] = 0x28;
+    i2c_buffer[1] = 0x02;
+    i2c_buffer[2] = 0x03;
+    i2c.TransmitDma(0x28, i2c_buffer, 3, NULL, NULL);
+    daisy_midi.sysex_printf_buffer("transmitted %d %d\n", i2c_buffer[1],
+                                   i2c_buffer[2]);
+    daisy_midi.sysex_send_buffer();
+    // request data
+    i2c.ReceiveBlocking(0x28, rx_data, 2, 1000);
+    daisy_midi.sysex_printf_buffer("received %d %d\n", rx_data[0], rx_data[1]);
+    daisy_midi.sysex_send_buffer();
+    System::Delay(1500);
+
+#ifdef INCLUDE_SDCARD
     if (main_thread_do_save) {
       System::Delay(1000);
       sdcard_write_or_read(true);
@@ -545,6 +581,7 @@ int main(void) {
       sdcard_write_or_read(false);
       main_thread_do_load = false;
     }
+#endif
   }
 }
 

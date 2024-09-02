@@ -4,7 +4,7 @@ TARGET = daisy1
 
 USE_DAISYSP_LGPL = 1
 
-APP_TYPE=BOOT_QSPI
+# APP_TYPE=BOOT_QSPI
 # without BOOT_SRAM: make program
 # with BOOT_SRAM:
 # hold boot, press reset and then

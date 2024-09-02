@@ -559,15 +559,22 @@ int main(void) {
   while (1) {
     // every second transmit data
     i2c_buffer[0] = 0x28;
-    i2c_buffer[1] = 0x02;
-    i2c_buffer[2] = 0x03;
+    i2c_buffer[1] = rand() % 255;
+    i2c_buffer[2] = rand() % 255;
     i2c.TransmitDma(0x28, i2c_buffer, 3, NULL, NULL);
     daisy_midi.sysex_printf_buffer("transmitted %d %d\n", i2c_buffer[1],
                                    i2c_buffer[2]);
     daisy_midi.sysex_send_buffer();
     // request data
-    i2c.ReceiveBlocking(0x28, rx_data, 2, 1000);
-    daisy_midi.sysex_printf_buffer("received %d %d\n", rx_data[0], rx_data[1]);
+    rx_data[0] = 0;
+    rx_data[1] = 0;
+    I2CHandle::Result res = i2c.ReceiveBlocking(0x28, rx_data, 2, 1000);
+    if (res == I2CHandle::Result::OK) {
+      daisy_midi.sysex_printf_buffer("received %d %d\n", rx_data[0],
+                                     rx_data[1]);
+    } else {
+      daisy_midi.sysex_printf_buffer("error %d\n", res);
+    }
     daisy_midi.sysex_send_buffer();
     System::Delay(1500);
 

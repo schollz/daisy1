@@ -12,7 +12,7 @@
 #include "lib/i2c_slave.h"
 
 static const uint I2C_SLAVE_ADDRESS = 0x28;
-static const uint I2C_BAUDRATE = 100000;  // 100 kHz
+static const uint I2C_BAUDRATE = 400000;  // 100 kHz
 
 // For this example, we run both the master and slave from the same board.
 // You'll need to wire pin GP4 to GP6 (SDA), and pin GP5 to GP7 (SCL).
@@ -48,8 +48,8 @@ static void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
     case I2C_SLAVE_REQUEST:  // master is requesting data
       printf("I2C_SLAVE_REQUEST\n");
       // load from memory
-      i2c_write_byte(i2c, 7);
-      i2c_write_byte(i2c, 8);
+      i2c_write_byte(i2c, context.mem[context.mem_address - 2]);
+      i2c_write_byte(i2c, context.mem[context.mem_address - 1]);
       context.mem_address++;
       break;
     case I2C_SLAVE_FINISH:  // master has signalled Stop / Restart
@@ -82,6 +82,6 @@ int main() {
 
   setup_slave();
   while (1) {
-    sleep_ms(1000);
+    tight_loop_contents();
   }
 }

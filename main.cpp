@@ -1,13 +1,14 @@
 // definitions
 // #define INCLUDE_REVERB
-#define INCLUDE_REVERB_VEC
-#define INCLUDE_COMPRESSOR
-#define INCLUDE_SEQUENCER
-#define INCLUDE_TAPE_LPF
+// #define INCLUDE_REVERB_VEC
+// #define INCLUDE_COMPRESSOR
+// #define INCLUDE_SEQUENCER
+// #define INCLUDE_TAPE_LPF
 //
 #include "core_cm7.h"
 #include "daisy_pod.h"
 #include "daisysp.h"
+#include "fatfs.h"
 //
 #include "lib/chords.h"
 #include "lib/daisy_midi.h"
@@ -48,6 +49,11 @@ Chords chords;
 #ifdef INCLUDE_REVERB_VEC
 FVerb2 fverb2;
 #endif
+SdmmcHandler sd;
+FatFSInterface fsi;
+FIL SDFile;
+
+bool audio_stopped = false;
 bool stereo_mode = true;
 float reverb_wet_dry = 0;
 
@@ -101,6 +107,76 @@ void SetVoltage(float voltage) {
   if (val > 4095) val = 4095;
   if (val < 0) val = 0;
   daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
+}
+
+#define TEST_FILE_NAME "test.bin"
+bool sdcard_test_done = false;
+void sdcard_test() {
+  // Vars and buffs.
+  char outbuff[1024];
+  char inbuff[1024];
+  size_t len, failcnt, byteswritten;
+  sprintf(outbuff, "Daisy...Testing...\n1...\n2...\n3...\n");
+  memset(inbuff, 0, 1024);
+  len = strlen(outbuff);
+  failcnt = 0;
+
+  Color red;
+  red.Init(Color::PresetColor::RED);
+  Color green;
+  green.Init(Color::PresetColor::GREEN);
+  Color yellow;
+  yellow.Init(0.9f, 0.9f, 0.0f);
+
+  hw.led1.SetColor(yellow);
+  hw.led1.Update();
+
+  // Init SD Card
+  SdmmcHandler::Config sd_cfg;
+  sd_cfg.Defaults();
+  sd.Init(sd_cfg);
+
+  // Links libdaisy i/o to fatfs driver.
+  fsi.Init(FatFSInterface::Config::MEDIA_SD);
+
+  // Mount SD Card
+  f_mount(&fsi.GetSDFileSystem(), "/", 1);
+
+  // Open and write the test file to the SD Card.
+  // time writing
+  uint32_t current_time = System::GetNow();
+  if (f_open(&SDFile, TEST_FILE_NAME, (FA_CREATE_ALWAYS) | (FA_WRITE)) ==
+      FR_OK) {
+    f_write(&SDFile, outbuff, len, &byteswritten);
+    f_close(&SDFile);
+  }
+  uint32_t write_time = System::GetNow() - current_time;
+
+  // Read back the test file from the SD Card.
+  if (f_open(&SDFile, TEST_FILE_NAME, FA_READ) == FR_OK) {
+    f_read(&SDFile, inbuff, len, &byteswritten);
+    f_close(&SDFile);
+  }
+
+  // Check for sameness.
+  for (size_t i = 0; i < len; i++) {
+    if (inbuff[i] != outbuff[i]) {
+      failcnt++;
+    }
+  }
+
+  // If what was read does not match
+  // what was written execution will stop.
+  if (failcnt) {
+    hw.led1.SetColor(red);
+  } else {
+    hw.led1.SetColor(green);
+  }
+  hw.led1.Update();
+
+  daisy_midi.sysex_printf_buffer("SD Card Test failcnt = %d in %d ms", failcnt,
+                                 write_time);
+  daisy_midi.sysex_send_buffer();
 }
 
 size_t audiocallback_sample_num = 0;
@@ -354,10 +430,11 @@ int main(void) {
   System::Delay(2000);
   daisy_midi.sysex_send_buffer();
 
-  daisy_midi.sysex_printf_buffer("tape size: %2.1f seconds",
+  daisy_midi.sysex_printf_buffer("tape size: %2.1f seconds\n",
                                  ((float)MAX_SIZE) / 48000.0f /
                                      (stereo_mode ? 2.0f : 1.0f) /
                                      ((float)NUM_LOOPS));
+  daisy_midi.sysex_send_buffer();
 
   hw.SetAudioBlockSize(AUDIO_BLOCK_SIZE);
 
@@ -366,6 +443,12 @@ int main(void) {
   hw.StartAudio(AudioCallback);
 
   while (1) {
+    System::Delay(1000);
+    if (audio_stopped) {
+      System::Delay(1000);
+      sdcard_test();
+      audio_stopped = false;
+    }
   }
 }
 
@@ -425,10 +508,19 @@ void Controls(float audio_level) {
       daisy_midi.sysex_printf_buffer("encoder long press");
     } else {
       daisy_midi.sysex_printf_buffer("encoder short press");
-      // reverse audio of all tapes
-      for (uint8_t i = 0; i < 6; i++) {
-        tape[i].PlayingReverseToggle();
-      }
+      audio_stopped = true;
+      // daisy_midi.sysex_printf_buffer("\n stop audio\n");
+      // daisy_midi.sysex_send_buffer();
+      // hw.StopAudio();
+      // System::Delay(1000);
+      // daisy_midi.sysex_printf_buffer("starting audio\n");
+      // daisy_midi.sysex_send_buffer();
+      // hw.StartAudio(AudioCallback);
+      // return;
+      // // reverse audio of all tapes
+      // for (uint8_t i = 0; i < 6; i++) {
+      //   tape[i].PlayingReverseToggle();
+      // }
     }
   }
 

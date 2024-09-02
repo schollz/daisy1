@@ -33,6 +33,7 @@ class Tape {
   size_t buffer_max = 1000;
   size_t buffer_start = 1000;
   size_t buffer_end = buffer_start + buffer_max;
+  size_t endpoints[2];
   float pan = 0;
   float rate = 1.0f;
   size_t rate_input_size = 0;
@@ -79,7 +80,6 @@ class Tape {
   size_t crossfade_limit = 1000;
   LPF lpf[2];
   bool is_stereo = false;
-  size_t endpoints[2];
   float sample_rate;
 };
 

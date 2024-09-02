@@ -37,3 +37,4 @@ build/
 *zip
 test/interpolation/1
 test/tape/1
+rp2040/pico-extras/

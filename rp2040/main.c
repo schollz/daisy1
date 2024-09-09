@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "lib/WS2812.h"
 #include "lib/i2c_fifo.h"
 #include "lib/i2c_slave.h"
 
@@ -76,6 +77,25 @@ static void setup_slave() {
 
 int main() {
   stdio_init_all();
+  sleep_ms(3000);
+  printf("hello world\n");
+  // setup WS2812
+  WS2812 *ws2812;
+  ws2812 = WS2812_new(WS2812_PIN, pio0, WS2812_SM, WS2812_NUM_LEDS);
+  WS2812_set_brightness(ws2812, 50);
+
+  for (int ledi = 12; ledi < 40; ledi++) {
+    for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+      if (i != ledi) {
+        WS2812_fill(ws2812, i, 0, 255, 0);
+      } else {
+        WS2812_fill(ws2812, i, 255, 0, 0);
+      }
+    }
+    WS2812_show(ws2812);
+    printf("led: %d\n", ledi);
+    sleep_ms(1000);
+  }
 
   setup_slave();
   while (1) {

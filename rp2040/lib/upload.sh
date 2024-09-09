@@ -2,7 +2,7 @@
 
 while true
 do
-if mount | grep RPI-RP2 > /dev/null; then
+if [ -d "/media/zns/RPI-RP2" ]; then
 	sleep 0.5
 	echo "uploading!"
 	time pv -batep build/*.uf2 > /media/zns/RPI-RP2/_core.uf2

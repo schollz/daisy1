@@ -16,12 +16,40 @@
 #include "lib/i2c_fifo.h"
 #include "lib/i2c_slave.h"
 #include "lib/knob_change.h"
+#include "lib/utils.h"
 //
 #include "quadrature_encoder.pio.h"
+
+#define LED_PLAY 9
+#define LED_RECORD 8
+#define LED_SAVE 7
+#define LED_SEQUENCE 6
+
+bool i2c_done_signal = false;
+
+// tape struct
+typedef struct Tape {
+  float phase;
+  float phase_last;
+  float pan;
+  float amp;
+  float fade;
+  bool is_recording;
+  bool is_playing;
+  bool is_playing_or_fading;
+  bool is_stopping;
+  bool is_recorded;
+  bool is_stereo;
+  bool has_recorded;
+} Tape;
 
 static const uint TRANSFER_SIZE = 8;
 static const uint I2C_BAUDRATE = 400000;  // 400 kHz
 
+// global information
+uint8_t loop_index = 0;
+
+Tape tape[6];
 const uint encoder_pins[7] = {10, 12, 14, 16, 18, 20, 28};
 const uint encoder_sm[7] = {1, 2, 3, 0, 1, 2, 3};
 int encoder_values[7] = {0, 0, 0, 0, 0, 0, 0};
@@ -37,6 +65,44 @@ static struct {
   uint8_t mem_address;
   bool mem_address_written;
 } context;
+
+#define NUM_LEDS 30
+#define PI 3.14159265358979323846
+
+// Convert degrees to radians
+float degrees_to_radians(float degrees) { return degrees * (PI / 180.0); }
+
+void find_closest_leds(float y, float rotation_degrees, int *led1, int *led2) {
+  if (y < -1 || y > 1) {
+    printf("y-coordinate out of range\n");
+    return;
+  }
+
+  // Convert rotation from degrees to radians
+  float rotation_radians = degrees_to_radians(rotation_degrees);
+
+  // Calculate the two x-coordinates on the unit circle for the given y
+  float x1 = sqrt(1 - y * y);
+  float x2 = -x1;
+
+  // Calculate angles for the two points (y, x1) and (y, x2)
+  float theta1 = atan2(y, x1);  // Angle in radians
+  float theta2 = atan2(y, x2);
+
+  // Add the rotation to the angles
+  theta1 += rotation_radians;
+  theta2 += rotation_radians;
+
+  // Normalize angles to [0, 2*PI] range
+  if (theta1 < 0) theta1 += 2 * PI;
+  if (theta1 >= 2 * PI) theta1 -= 2 * PI;
+  if (theta2 < 0) theta2 += 2 * PI;
+  if (theta2 >= 2 * PI) theta2 -= 2 * PI;
+
+  // Convert angles to LED indices
+  *led1 = (int)(theta1 / (2 * PI) * NUM_LEDS) % NUM_LEDS;
+  *led2 = (int)(theta2 / (2 * PI) * NUM_LEDS) % NUM_LEDS;
+}
 
 // Our handler is called from the I2C ISR, so it must complete quickly. Blocking
 // calls / printing to stdio may interfere with interrupt handling.
@@ -93,6 +159,34 @@ static void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
       context.mem_address_written = false;
       break;
     case I2C_SLAVE_FINISH:  // master has signalled Stop / Restart
+      if (context.mem[0] == 0x04 && context.mem[1] < 6) {
+        // get the information from the tape
+        uint8_t i = context.mem[1];
+        tape[i].phase = context.mem[2] / 255.0f;
+        tape[i].phase_last = context.mem[3] / 255.0f;
+        tape[i].pan = linlin(context.mem[4], 0, 255, -1.0f, 1.0f);
+        tape[i].amp = linlin(context.mem[5], 0, 255, 0.0f, 1.0f);
+        tape[i].fade = linlin(context.mem[6], 0, 255, 0.0f, 1.0f);
+        tape[i].is_recording = context.mem[7] & 1;
+        tape[i].is_playing_or_fading = context.mem[7] & 2;
+        tape[i].is_stopping = context.mem[7] & 4;
+        tape[i].is_recorded = context.mem[7] & 8;
+        tape[i].is_stereo = context.mem[7] & 16;
+        tape[i].has_recorded = context.mem[7] & 32;
+        tape[i].is_playing = context.mem[7] & 64;
+        if (i == 0 && tape[i].is_playing_or_fading) {
+          printf("tape: %f %f %f %f %f %d %d %d %d %d %d %d\n", tape[i].phase,
+                 tape[i].phase_last, tape[i].pan, tape[i].amp, tape[i].fade,
+                 tape[i].is_recording, tape[i].is_playing_or_fading,
+                 tape[i].is_stopping, tape[i].is_recorded, tape[i].is_stereo,
+                 tape[i].has_recorded, tape[i].is_playing);
+        }
+      } else if (context.mem[0] == 0x05) {
+        // global information
+        loop_index = context.mem[1];
+      } else if (context.mem[0] == 0x06) {
+        i2c_done_signal = true;
+      }
       context.mem_address_written = false;
       break;
     default:
@@ -156,7 +250,7 @@ int main() {
   // setup WS2812
   WS2812 *ws2812;
   ws2812 = WS2812_new(WS2812_PIN, pio0, WS2812_SM, WS2812_NUM_LEDS);
-  WS2812_set_brightness(ws2812, 50);
+  WS2812_set_brightness(ws2812, 60);
 
   DAC *dac;
   dac = DAC_malloc();
@@ -165,6 +259,8 @@ int main() {
   DAC_set_voltage(dac, 2, 1.95);
   DAC_set_voltage(dac, 3, 0.95);
   DAC_update(dac);
+
+  uint8_t ws2812_show_counter = 0;
   while (1) {
     // for (int ledi = 4 + 6; ledi < 40; ledi++) {
     //   for (int i = 0; i < WS2812_NUM_LEDS; i++) {
@@ -200,12 +296,84 @@ int main() {
     // read encoders
     for (int i = 0; i < 7; i++) {
       if (i < 3) {
-        encoder_values[i] = quadrature_encoder_get_count(pio0, encoder_sm[i]);
+        encoder_values[i] =
+            -1 * quadrature_encoder_get_count(pio0, encoder_sm[i]);
       } else {
-        encoder_values[i] = quadrature_encoder_get_count(pio1, encoder_sm[i]);
+        encoder_values[i] =
+            -1 * quadrature_encoder_get_count(pio1, encoder_sm[i]);
       }
     }
     startup_first_run = false;
-    sleep_ms(1);
+    sleep_ms(3);
+
+    // visualize
+    if (i2c_done_signal) {
+      // show loop_index
+      for (uint8_t i = 0; i < 6; i++) {
+        uint8_t r, g, b;
+        hue_to_rgb(255 / 6 * i, &r, &g, &b);
+        if (i == loop_index) {
+          WS2812_fill(ws2812, 0 + i, r, g, b);
+        } else if (tape[i].is_playing_or_fading) {
+          WS2812_fill(ws2812, 0 + i, r * 25 / 255, g * 25 / 255, b * 25 / 255);
+        } else {
+          WS2812_fill(ws2812, 0 + i, 0, 0, 0);
+        }
+      }
+      // clear led ring
+      for (uint8_t i = 10; i < 40; i++) {
+        WS2812_fill(ws2812, i, 0, 0, 0);
+      }
+
+      // draw the pan + amp
+      int led1, led2;
+      find_closest_leds(tape[loop_index].pan, 12 + 90, &led1, &led2);
+      WS2812_fill(ws2812, 10 + led1, 255, 0, 0);
+      WS2812_fill(ws2812, 10 + led2, 255, 0, 0);
+      find_closest_leds(tape[loop_index].amp * 2.0f - 1.0f, 12, &led1, &led2);
+      WS2812_fill(ws2812, 10 + led1, 0, 0, 255);
+      WS2812_fill(ws2812, 10 + led2, 0, 0, 255);
+
+      // show the phase
+      if (!tape[loop_index].is_playing) {
+        WS2812_fill(ws2812, 10.0f + roundf(29.0f * tape[loop_index].phase), 255,
+                    255, 255);
+      } else {
+        // find closest two leds and interpolate
+        float led_a = 29.999f * tape[loop_index].phase;
+        int led1 = 10 + (int)floor(led_a);
+        int led2 = led1 + 1;
+        if (led2 == 40) {
+          led2 = 10;
+        }
+        uint8_t led1_intensity = 255 - (led_a - floor(led_a)) * 255;
+        uint8_t led2_intensity = 255 - led1_intensity;
+        led1_intensity = led1_intensity * tape[loop_index].fade;
+        led2_intensity = led2_intensity * tape[loop_index].fade;
+        WS2812_fill(ws2812, led1, led1_intensity, led1_intensity,
+                    led1_intensity);
+        WS2812_fill(ws2812, led2, led2_intensity, led2_intensity,
+                    led2_intensity);
+      }
+
+      if (tape[loop_index].is_playing_or_fading) {
+        WS2812_fill(ws2812, LED_PLAY, 0, roundf(255.0f * tape[loop_index].fade),
+                    0);
+      } else {
+        WS2812_fill(ws2812, LED_PLAY, 0, 0, 0);
+      }
+      if (tape[loop_index].is_recording) {
+        WS2812_fill(ws2812, LED_RECORD, 255, 0, 0);
+      } else {
+        WS2812_fill(ws2812, LED_RECORD, 0, 0, 0);
+      }
+
+      WS2812_show(ws2812);
+    }
+
+    // reset the i2c_done_signal
+    if (i2c_done_signal) {
+      i2c_done_signal = false;
+    }
   }
 }

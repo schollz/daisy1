@@ -74,7 +74,8 @@ void Tape::SetPhaseEnd(float phase) {
 }
 
 float Tape::GetPhase() {
-  return ((float)head_play_last_pos / ((float)(buffer_max - buffer_min)));
+  return ((float)(head_phase - buffer_start) /
+          ((float)(buffer_end - buffer_start)));
 }
 
 void Tape::SetTapeStart(size_t pos) {
@@ -169,6 +170,18 @@ bool Tape::IsPlayingOrFading() {
   return is_playing;
 }
 
+bool Tape::IsPlayingOrFadingIn() {
+  bool is_playing = false;
+  for (size_t i = 0; i < TAPE_PLAY_HEADS; i++) {
+    if (head_play[i].IsState(TapeHead::STARTING) ||
+        head_play[i].IsState(TapeHead::STARTED)) {
+      is_playing = true;
+      break;
+    }
+  }
+  return is_playing;
+}
+
 void Tape::PlayingReverseToggle() {
   for (size_t i = 0; i < TAPE_PLAY_HEADS; i++) {
     if (head_play[i].direction == TapeHead::FORWARD) {
@@ -208,10 +221,10 @@ size_t Tape::PlayingCut(size_t pos) {
   return head;
 }
 
-void Tape::PlayingStart() { PlayingCut(head_play_last_pos); }
+void Tape::PlayingStart() { PlayingCut(head_phase); }
 
 void Tape::PlayingToggle() {
-  if (IsPlayingOrFading()) {
+  if (IsPlayingOrFadingIn()) {
     PlayingStop();
   } else {
     PlayingStart();
@@ -366,6 +379,9 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
             if (is_stereo) {
               outr1[i] += buf_tape[head_play[head].pos + 1] * fade_in;
             }
+            head_phase = head_play[head].pos;
+            head_play_last_pos = head_play[head].pos;
+            head_amp = fade_in;
             // .Move() will move 2 for stereo, 1 for mono
             head_play[head].Move();
             continue;
@@ -377,7 +393,9 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
           if (is_stereo) {
             outr1[i] += buf_tape[head_play[head].pos + 1];
           }
+          head_phase = head_play[head].pos;
           head_play_last_pos = head_play[head].pos;
+          head_amp = 1.0f;
           // .Move() will move 2 for stereo, 1 for mono
           head_play[head].Move();
           // if the head is at the buffer end, cut it
@@ -418,6 +436,7 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
             if (is_stereo) {
               outr1[i] += buf_tape[head_play[head].pos + 1] * fade_out;
             }
+            head_amp = fade_out;
             head_play[head].Move();
             continue;
           }
@@ -432,7 +451,7 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
     }
 
     // // apply amplitude modulation
-    // lfos[TAPE_LFO_AMP].Update(current_time);
+    lfos[TAPE_LFO_AMP].Update(current_time);
     // float val = lfos[TAPE_LFO_AMP].Value();
     // for (size_t i = 0; i < input_size; i++) {
     //   outl1[i] = outl1[i] * val;
@@ -511,6 +530,68 @@ void Tape::SetPitch(int pitch) {
   this->rate = 0;
 }
 
-float Tape::GetRate() { return rate; }
+float Tape::GetRate() {
+  if (rate == 0) {
+    // calculate rate from rate_input_size
+    return (float)rate_input_size / 128.0f;
+  } else {
+    return rate;
+  }
+}
 
 bool Tape::IsRecorded() { return has_recorded; }
+
+float linlin(float x, float in_min, float in_max, float out_min,
+             float out_max) {
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+std::vector<uint8_t> Tape::Marshal() {
+  std::vector<uint8_t> data;
+  // get position of the head as percentage (0-255)
+  data.push_back(roundf(255.0f * GetPhase()));
+  data.push_back(roundf(255.0f * (head_play_last_pos - buffer_start) /
+                        (buffer_end - buffer_start)));
+
+  data.push_back(
+      roundf(linlin(lfos[TAPE_LFO_PAN].Value(), -1.0f, 1.0f, 0, 255)));
+
+  data.push_back(
+      roundf(linlin(lfos[TAPE_LFO_AMP].Value(), 0.0f, 1.0f, 0, 255)));
+
+  data.push_back(roundf(linlin(head_amp, 0.0f, 1.0f, 0, 255)));
+
+  uint8_t b;
+  //  bit flags
+  // bit 0: recording
+  // bit 1: playing
+  // bit 2: stopping
+  // bit 3: recorded
+  // bit 4: is_stereo
+  // bit 5: has_recorded
+  b = 0;
+  if (IsRecording()) {
+    b |= 1 << 0;
+  }
+  if (IsPlayingOrFading()) {
+    b |= 1 << 1;
+  }
+  if (IsStopping()) {
+    b |= 1 << 2;
+  }
+  if (IsRecorded()) {
+    b |= 1 << 3;
+  }
+  if (is_stereo) {
+    b |= 1 << 4;
+  }
+  if (has_recorded) {
+    b |= 1 << 5;
+  }
+  if (IsPlaying()) {
+    b |= 1 << 6;
+  }
+  data.push_back(b);
+
+  return data;
+}

@@ -86,9 +86,7 @@ enum WS2812_Color {
 
 void WS2812_fill(WS2812 *ws, int index, uint8_t red, uint8_t green,
                  uint8_t blue) {
-  if (index < 0 || index >= ws->num_leds) {
-    return;  // Safety check to avoid overflow
-  }
+  index = abs(index) % ws->num_leds;
   // scale by brightness level
   red = (red * ws->brightness) / 255;
   green = (green * ws->brightness) / 255;

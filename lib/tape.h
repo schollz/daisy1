@@ -2,6 +2,7 @@
 #define TAPE_H
 #include <bitset>
 #include <cstring>
+#include <vector>
 
 #include "balance2.h"
 #include "circularbuffer.h"
@@ -29,6 +30,8 @@ class Tape {
   TapeHead head_rec;
   TapeHead head_play[TAPE_PLAY_HEADS];
   size_t head_play_last_pos = 0;
+  size_t head_phase = 0;
+  float head_amp = 0;
   size_t buffer_min = 0;
   size_t buffer_max = 1000;
   size_t buffer_start = 1000;
@@ -52,6 +55,7 @@ class Tape {
   bool IsPlaying();
   bool IsStopping();
   bool IsPlayingOrFading();
+  bool IsPlayingOrFadingIn();
   bool IsRecorded();
   void PlayingFadeOut();
   size_t PlayingCut(size_t pos);
@@ -72,6 +76,7 @@ class Tape {
   void SetPhaseEnd(float phase);
   float GetPhase();
   float GetRate();
+  std::vector<uint8_t> Marshal();
 
  private:
   bool has_recorded = false;

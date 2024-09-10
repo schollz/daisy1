@@ -56,6 +56,20 @@ SdmmcHandler sd;
 FatFSInterface fsi;
 FIL SDFile;
 
+#define BTN_SHIFT 0
+#define BTN_PLAY 1
+#define BTN_RECORD 2
+#define BTN_SAVE 3
+#define BTN_SEQUENCE 4
+#define BTN_LFO 5
+
+// controls
+uint8_t button_values[6] = {0, 0, 0, 0, 0, 0};
+uint8_t button_values_last[6] = {0, 0, 0, 0, 0, 0};
+int encoder_values[7] = {0, 0, 0, 0, 0, 0, 0};
+int knob_values[3] = {0, 0, 0};
+bool knob_changed[3] = {false, false, false};
+
 bool main_thread_do_save = false;
 bool main_thread_do_load = false;
 bool stereo_mode = true;
@@ -402,8 +416,8 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
 #endif
 }
 
-uint8_t DMA_BUFFER_MEM_SECTION tx_data[2] = {0x01,
-                                             0x02};  // Example data to send
+uint8_t DMA_BUFFER_MEM_SECTION tx_data[16] = {0, 0, 0, 0, 0, 0, 0, 0,
+                                              0, 0, 0, 0, 0, 0, 0, 0};
 uint8_t DMA_BUFFER_MEM_SECTION rx_data[64];
 
 bool i2c_tx_done = false;
@@ -538,10 +552,15 @@ int main(void) {
     res = i2c.ReceiveBlocking(0x28, rx_data, 6, 1000);
     if (res == I2CHandle::Result::OK) {
       for (size_t i = 0; i < 6; i++) {
-        daisy_midi.sysex_printf_buffer("%d", rx_data[i]);
+        button_values[i] = rx_data[i];
+        // daisy_midi.sysex_printf_buffer("%d", rx_data[i]);
       }
+      // daisy_midi.sysex_printf_buffer(" ");
     } else {
       // reinitialize i2c
+      System::Delay(1000);
+      daisy_midi.sysex_printf_buffer("i2c error\n");
+      daisy_midi.sysex_send_buffer();
       i2c.Init(i2c_conf);
     }
     // ask for encoder values by sending 0x01
@@ -554,7 +573,8 @@ int main(void) {
         uint8_t byte2 = rx_data[i + 1];
         // convert the two bytes to a signed 16-bit value
         int16_t value = (byte1 << 8) | byte2;
-        daisy_midi.sysex_printf_buffer("%d ", value);
+        encoder_values[i / 2] = value;
+        // daisy_midi.sysex_printf_buffer("%d ", value);
       }
     } else {
       // reinitialize i2c
@@ -571,16 +591,54 @@ int main(void) {
         // first bit is changed, next 15 bits are value
         int changed = (byte1 >> 7) & 0x01;
         int value = ((byte1 & 0x7F) << 8) | byte2;
-        daisy_midi.sysex_printf_buffer("%d(%d) ", value, changed);
+        knob_values[i / 2] = value;
+        knob_changed[i / 2] = changed;
+        // daisy_midi.sysex_printf_buffer("%d(%d) ", value, changed);
       }
-    } else {
-      // reinitialize i2c
-      i2c.Init(i2c_conf);
     }
-    daisy_midi.sysex_printf_buffer("ok\n");
+    // daisy_midi.sysex_printf_buffer("ok\n");
+    // daisy_midi.sysex_send_buffer();
+
+    // process the new information
+    loop_index = abs(encoder_values[3] / 4) % 6;
+    // process buttons
+    bool button_pressed[6];
+    for (size_t i = 0; i < 6; i++) {
+      button_pressed[i] = button_values[i] == 1 && button_values_last[i] == 0;
+      button_values_last[i] = button_values[i];
+    }
+
+    if (button_values[BTN_SHIFT] == 0 && button_pressed[BTN_PLAY]) {
+      daisy_midi.sysex_printf_buffer("play");
+      tape[loop_index].PlayingToggle();
+    }
+    if (button_values[BTN_SHIFT] == 0 && button_pressed[BTN_RECORD]) {
+      daisy_midi.sysex_printf_buffer("record");
+      tape[loop_index].RecordingToggle();
+    }
     daisy_midi.sysex_send_buffer();
 
-    System::Delay(20);
+    // send some global information
+    tx_data[0] = 0x05;
+    tx_data[1] = loop_index;
+    i2c.TransmitBlocking(0x28, tx_data, 2, 1000);
+
+    // send the tape information
+    for (size_t i = 0; i < NUM_LOOPS; i++) {
+      std::vector<uint8_t> bytes = tape[i].Marshal();
+      tx_data[0] = 0x04;
+      tx_data[1] = i;
+      for (size_t j = 0; j < bytes.size(); j++) {
+        tx_data[j + 2] = bytes[j];
+      }
+      i2c.TransmitBlocking(0x28, tx_data, bytes.size() + 2, 1000);
+    }
+
+    // send done signal
+    tx_data[0] = 0x06;
+    i2c.TransmitBlocking(0x28, tx_data, 1, 1000);
+
+    System::Delay(60);
 
 #ifdef INCLUDE_SDCARD
     if (main_thread_do_save) {
@@ -764,16 +822,16 @@ void Controls(float audio_level) {
     //     tape[loop_index].lfos[1].Value(),
     //     tape[loop_index].lfos[2].Value(), audio_level);
     // for each active loop, print the rate
-    bool tape_playing = false;
-    for (size_t i = 0; i < 6; i++) {
-      if (tape[i].IsPlayingOrFading()) {
-        tape_playing = true;
-        daisy_midi.sysex_printf_buffer("%d: %2.2f ", i, tape[i].GetRate());
-      }
-    }
-    if (tape_playing) {
-      daisy_midi.sysex_printf_buffer("\n");
-    }
+    // bool tape_playing = false;
+    // for (size_t i = 0; i < 6; i++) {
+    //   if (tape[i].IsPlayingOrFading()) {
+    //     tape_playing = true;
+    //     daisy_midi.sysex_printf_buffer("%d: %2.2f ", i, tape[i].GetRate());
+    //   }
+    // }
+    // if (tape_playing) {
+    //   daisy_midi.sysex_printf_buffer("\n");
+    // }
   }
   daisy_midi.sysex_send_buffer();
 }

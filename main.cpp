@@ -531,12 +531,21 @@ int main(void) {
 #define TRANSFER_SIZE 8
 
   while (1) {
+    I2CHandle::Result res;
+    // ask for the button values by sending 0x03
+    tx_data[0] = 0x03;
+    i2c.TransmitBlocking(0x28, tx_data, 1, 1000);
+    res = i2c.ReceiveBlocking(0x28, rx_data, 6, 1000);
+    if (res == I2CHandle::Result::OK) {
+      for (size_t i = 0; i < 6; i++) {
+        daisy_midi.sysex_printf_buffer("%d", rx_data[i]);
+      }
+    }
     // ask for encoder values by sending 0x01
     tx_data[0] = 0x01;
     i2c.TransmitBlocking(0x28, tx_data, 1, 1000);
-    I2CHandle::Result res = i2c.ReceiveBlocking(0x28, rx_data, 14, 1000);
+    res = i2c.ReceiveBlocking(0x28, rx_data, 14, 1000);
     if (res == I2CHandle::Result::OK) {
-      // daisy_midi.sysex_printf_buffer("recv ");
       for (size_t i = 0; i < 14; i += 2) {
         uint8_t byte1 = rx_data[i];
         uint8_t byte2 = rx_data[i + 1];
@@ -544,15 +553,12 @@ int main(void) {
         int16_t value = (byte1 << 8) | byte2;
         daisy_midi.sysex_printf_buffer("%d ", value);
       }
-      daisy_midi.sysex_printf_buffer("\n");
-      daisy_midi.sysex_send_buffer();
     }
     // ask for the knob values by sending 0x02
     tx_data[0] = 0x02;
     i2c.TransmitBlocking(0x28, tx_data, 1, 1000);
     res = i2c.ReceiveBlocking(0x28, rx_data, 6, 1000);
     if (res == I2CHandle::Result::OK) {
-      // daisy_midi.sysex_printf_buffer("recv ");
       for (size_t i = 0; i < 6; i += 2) {
         uint8_t byte1 = rx_data[i];
         uint8_t byte2 = rx_data[i + 1];
@@ -561,10 +567,11 @@ int main(void) {
         int value = ((byte1 & 0x7F) << 8) | byte2;
         daisy_midi.sysex_printf_buffer("%d(%d) ", value, changed);
       }
-      daisy_midi.sysex_printf_buffer("\n");
-      daisy_midi.sysex_send_buffer();
     }
-    System::Delay(1000);
+    daisy_midi.sysex_printf_buffer("\n");
+    daisy_midi.sysex_send_buffer();
+
+    System::Delay(20);
 
 #ifdef INCLUDE_SDCARD
     if (main_thread_do_save) {
@@ -727,16 +734,17 @@ void Controls(float audio_level) {
 #endif
   }
   if (print_timer.Process()) {
-    daisy_midi.sysex_printf_buffer(
-        "[Controls] usage=%2.1f%% ",
-        (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f,
-        audiocallback_sample_num);
-    daisy_midi.sysex_printf_buffer(
-        "(%d,%d,%d,%d) ", tape[loop_index].IsStopping(),
-        tape[loop_index].IsPlaying(), tape[loop_index].IsPlayingOrFading(),
-        tape[loop_index].IsRecording());
-    daisy_midi.sysex_printf_buffer("knob1=%2.3f ", knobs_current[0]);
-    daisy_midi.sysex_printf_buffer("knob2=%2.3f\n", knobs_current[1]);
+    // daisy_midi.sysex_printf_buffer(
+    //     "[Controls] usage=%2.1f%% ",
+    //     (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f,
+    //     audiocallback_sample_num);
+    // daisy_midi.sysex_printf_buffer(
+    //     "(%d,%d,%d,%d) ", tape[loop_index].IsStopping(),
+    //     tape[loop_index].IsPlaying(), tape[loop_index].IsPlayingOrFading(),
+    //     tape[loop_index].IsRecording());
+    // daisy_midi.sysex_printf_buffer("knob1=%2.3f ", knobs_current[0]);
+    // daisy_midi.sysex_printf_buffer("knob2=%2.3f\n", knobs_current[1]);
+
     // daisy_midi.sysex_printf_buffer(
     //     "%d, knob1=%2.3f knob2=%2.3f, enc=%d, usage=%2.1f%% per %d "
     //     "samples, rate=%2.3f, pan=%2.2f, amp=%2.2f, lpf=%2.2f,

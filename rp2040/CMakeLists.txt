@@ -42,6 +42,12 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     WS2812_PIN=22
     WS2812_SM=2
     WS2812_NUM_LEDS=40
+    PIN_I2C0_SDA=0
+    PIN_I2C0_SCL=1
+    PIN_I2C1_SDA=2
+    PIN_I2C1_SCL=3
+    I2C_SLAVE_ADDRESS=0x28
+
 )
 # target_compile_options(command_line PUBLIC -Wall -Wextra -Wno-unused-function -Wno-unused-parameter)
 # target_compile_options(${PROJECT_NAME} PUBLIC -Wall -Wextra -Wno-unused-parameter)

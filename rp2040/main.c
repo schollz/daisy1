@@ -9,17 +9,12 @@
 #include <string.h>
 
 #include "lib/WS2812.h"
+#include "lib/dac.h"
 #include "lib/i2c_fifo.h"
 #include "lib/i2c_slave.h"
 
 static const uint TRANSFER_SIZE = 8;
-static const uint I2C_SLAVE_ADDRESS = 0x28;
 static const uint I2C_BAUDRATE = 400000;  // 100 kHz
-
-// For this example, we run both the master and slave from the same board.
-// You'll need to wire pin GP4 to GP6 (SDA), and pin GP5 to GP7 (SCL).
-static const uint I2C_SLAVE_SDA_PIN = 4;  // 4
-static const uint I2C_SLAVE_SCL_PIN = 5;  // 5
 
 // The slave implements a 256 byte memory. To write a series of bytes, the
 // master first writes the memory address, followed by the data. The address is
@@ -61,43 +56,71 @@ static void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
   }
 }
 
-static void setup_slave() {
-  gpio_init(I2C_SLAVE_SDA_PIN);
-  gpio_set_function(I2C_SLAVE_SDA_PIN, GPIO_FUNC_I2C);
-  gpio_pull_up(I2C_SLAVE_SDA_PIN);
-
-  gpio_init(I2C_SLAVE_SCL_PIN);
-  gpio_set_function(I2C_SLAVE_SCL_PIN, GPIO_FUNC_I2C);
-  gpio_pull_up(I2C_SLAVE_SCL_PIN);
-
-  i2c_init(i2c0, I2C_BAUDRATE);
-  // configure I2C0 for slave mode
-  i2c_slave_init(i2c0, I2C_SLAVE_ADDRESS, &i2c_slave_handler);
-}
-
 int main() {
   stdio_init_all();
+
+  // setup i2c
+  gpio_init(PIN_I2C0_SDA);
+  gpio_set_function(PIN_I2C0_SDA, GPIO_FUNC_I2C);
+  gpio_pull_up(PIN_I2C0_SDA);
+  gpio_init(PIN_I2C0_SCL);
+  gpio_set_function(PIN_I2C0_SCL, GPIO_FUNC_I2C);
+  gpio_pull_up(PIN_I2C0_SCL);
+  i2c_init(i2c0, I2C_BAUDRATE);
+  i2c_slave_init(i2c0, I2C_SLAVE_ADDRESS, &i2c_slave_handler);
+
+  // setup i2c1
+  gpio_init(PIN_I2C1_SDA);
+  gpio_set_function(PIN_I2C1_SDA, GPIO_FUNC_I2C);
+  gpio_pull_up(PIN_I2C1_SDA);
+  gpio_init(PIN_I2C1_SCL);
+  gpio_set_function(PIN_I2C1_SCL, GPIO_FUNC_I2C);
+  gpio_pull_up(PIN_I2C1_SCL);
+  i2c_init(i2c1, I2C_BAUDRATE);
+
   sleep_ms(3000);
+  printf("I2C scan\n");
+
+  for (int addr = 0; addr < (1 << 7); ++addr) {
+    int ret;
+    uint8_t rxdata;
+    ret = i2c_read_blocking(i2c1, addr, &rxdata, 1, false);
+
+    if (ret >= 0) {
+      printf(" 0x%02x\n", addr);
+    }
+  }
+
   printf("hello world\n");
   // setup WS2812
   WS2812 *ws2812;
   ws2812 = WS2812_new(WS2812_PIN, pio0, WS2812_SM, WS2812_NUM_LEDS);
   WS2812_set_brightness(ws2812, 50);
 
-  for (int ledi = 12; ledi < 40; ledi++) {
-    for (int i = 0; i < WS2812_NUM_LEDS; i++) {
-      if (i != ledi) {
-        WS2812_fill(ws2812, i, 0, 255, 0);
-      } else {
-        WS2812_fill(ws2812, i, 255, 0, 0);
+  DAC *dac;
+  dac = DAC_malloc();
+  DAC_set_voltage(dac, 0, 3.95);
+  DAC_set_voltage(dac, 1, 2.95);
+  DAC_set_voltage(dac, 2, 1.95);
+  DAC_set_voltage(dac, 3, 0.95);
+  DAC_update(dac);
+  while (1) {
+    for (int ledi = 4 + 6; ledi < 40; ledi++) {
+      for (int i = 0; i < WS2812_NUM_LEDS; i++) {
+        if (i < 4 + 6) {
+          WS2812_fill(ws2812, i, 0, 0, 0);
+        } else if (i != ledi) {
+          WS2812_fill(ws2812, i, 0, 255, 0);
+        } else {
+          WS2812_fill(ws2812, i, 255, 0, 0);
+        }
       }
+      WS2812_show(ws2812);
+
+      sleep_ms(1000 / 30 * 8);
     }
-    WS2812_show(ws2812);
-    printf("led: %d\n", ledi);
-    sleep_ms(1000);
   }
 
-  setup_slave();
   while (1) {
     tight_loop_contents();
   }

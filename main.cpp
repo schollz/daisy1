@@ -540,6 +540,9 @@ int main(void) {
       for (size_t i = 0; i < 6; i++) {
         daisy_midi.sysex_printf_buffer("%d", rx_data[i]);
       }
+    } else {
+      // reinitialize i2c
+      i2c.Init(i2c_conf);
     }
     // ask for encoder values by sending 0x01
     tx_data[0] = 0x01;
@@ -553,6 +556,9 @@ int main(void) {
         int16_t value = (byte1 << 8) | byte2;
         daisy_midi.sysex_printf_buffer("%d ", value);
       }
+    } else {
+      // reinitialize i2c
+      i2c.Init(i2c_conf);
     }
     // ask for the knob values by sending 0x02
     tx_data[0] = 0x02;
@@ -567,8 +573,11 @@ int main(void) {
         int value = ((byte1 & 0x7F) << 8) | byte2;
         daisy_midi.sysex_printf_buffer("%d(%d) ", value, changed);
       }
+    } else {
+      // reinitialize i2c
+      i2c.Init(i2c_conf);
     }
-    daisy_midi.sysex_printf_buffer("\n");
+    daisy_midi.sysex_printf_buffer("ok\n");
     daisy_midi.sysex_send_buffer();
 
     System::Delay(20);

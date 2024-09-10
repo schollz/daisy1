@@ -1,6 +1,6 @@
 // definitions
 // #define INCLUDE_REVERB
-// #define INCLUDE_REVERB_VEC
+#define INCLUDE_REVERB_VEC
 // #define INCLUDE_COMPRESSOR
 // #define INCLUDE_SEQUENCER
 // #define INCLUDE_TAPE_LPF
@@ -455,34 +455,6 @@ int main(void) {
   i2c_conf.pin_config.sda = {DSY_GPIOB, 9};
   i2c.Init(i2c_conf);
 
-  // // i2c scan
-  // daisy_midi.sysex_printf_buffer("MCP4728 scan start");
-  // for (uint8_t i = 1; i < 128;
-  //      i++) {  // Address 0 is usually reserved, start at 1
-  //   uint8_t data[1] = {0};
-  //   I2CHandle::Result res = i2c.TransmitBlocking(i, data, 1, 100);
-  //   if (res == I2CHandle::Result::OK) {
-  //     daisy_midi.sysex_printf_buffer("I2C device found at address: 0x%02X",
-  //                         i);  // Display the address in hexadecimal format
-  //   }
-  // }
-  // daisy_midi.sysex_printf_buffer("MCP4728 scan end");
-
-  // daisy_midi.sysex_printf_buffer("MCP4728 test");
-  // uint8_t i2c_address = 0x60;  // Default I2C address for MCP4725
-  // uint8_t data[2];
-
-  // uint16_t value = roundf(3.5f / 5.0f * 4096);  // 12-bit value to send to
-  // DAC
-  // // Prepare data to send
-  // data[0] = (value >> 8) & 0x0F;  // Upper 4 bits of the 12-bit value
-  // data[1] = value & 0xFF;         // Lower 8 bits of the 12-bit value
-
-  // // Transmit the data
-  // i2c.TransmitBlocking(i2c_address, data, 2, 1000);
-
-  // daisy_midi.sysex_printf_buffer("MCP4728 test done");
-
 #ifdef INLUCDE_COMPRESSOR
   compressor.init(AUDIO_SAMPLE_RATE)
 #endif
@@ -559,34 +531,40 @@ int main(void) {
 #define TRANSFER_SIZE 8
 
   while (1) {
-    // // every second transmit data
-    // // daisy_midi.sysex_printf_buffer("send ");
-    // for (size_t i = 0; i < TRANSFER_SIZE; i++) {
-    //   i2c_buffer[i] = rand() % 255;
-    //   // daisy_midi.sysex_printf_buffer("%d ", i2c_buffer[i]);
-    // }
-    // // daisy_midi.sysex_printf_buffer("\n");
-    // // daisy_midi.sysex_send_buffer();
-    // i2c.TransmitBlocking(0x28, i2c_buffer, TRANSFER_SIZE, 1000);
-    // // i2c.TransmitDma(0x28, i2c_buffer, TRANSFER_SIZE, NULL, NULL);
-    // // request data
-    // I2CHandle::Result res =
-    //     i2c.ReceiveBlocking(0x28, rx_data, TRANSFER_SIZE, 1000);
-    // if (res == I2CHandle::Result::OK) {
-    //   // daisy_midi.sysex_printf_buffer("recv ");
-    //   for (size_t i = 0; i < TRANSFER_SIZE; i++) {
-    //     if (rx_data[i] != i2c_buffer[i]) {
-    //       daisy_midi.sysex_printf_buffer("error ");
-    //     }
-    //     // daisy_midi.sysex_printf_buffer("%d ", rx_data[i]);
-    //   }
-    //   // daisy_midi.sysex_printf_buffer("\n");
-    //   daisy_midi.sysex_send_buffer();
-    // } else {
-    //   daisy_midi.sysex_printf_buffer("error %d\n", res);
-    //   daisy_midi.sysex_send_buffer();
-    // }
-    // System::Delay(1);
+    // ask for encoder values by sending 0x01
+    tx_data[0] = 0x01;
+    i2c.TransmitBlocking(0x28, tx_data, 1, 1000);
+    I2CHandle::Result res = i2c.ReceiveBlocking(0x28, rx_data, 14, 1000);
+    if (res == I2CHandle::Result::OK) {
+      // daisy_midi.sysex_printf_buffer("recv ");
+      for (size_t i = 0; i < 14; i += 2) {
+        uint8_t byte1 = rx_data[i];
+        uint8_t byte2 = rx_data[i + 1];
+        // convert the two bytes to a signed 16-bit value
+        int16_t value = (byte1 << 8) | byte2;
+        daisy_midi.sysex_printf_buffer("%d ", value);
+      }
+      daisy_midi.sysex_printf_buffer("\n");
+      daisy_midi.sysex_send_buffer();
+    }
+    // ask for the knob values by sending 0x02
+    tx_data[0] = 0x02;
+    i2c.TransmitBlocking(0x28, tx_data, 1, 1000);
+    res = i2c.ReceiveBlocking(0x28, rx_data, 6, 1000);
+    if (res == I2CHandle::Result::OK) {
+      // daisy_midi.sysex_printf_buffer("recv ");
+      for (size_t i = 0; i < 6; i += 2) {
+        uint8_t byte1 = rx_data[i];
+        uint8_t byte2 = rx_data[i + 1];
+        // first bit is changed, next 15 bits are value
+        int changed = (byte1 >> 7) & 0x01;
+        int value = ((byte1 & 0x7F) << 8) | byte2;
+        daisy_midi.sysex_printf_buffer("%d(%d) ", value, changed);
+      }
+      daisy_midi.sysex_printf_buffer("\n");
+      daisy_midi.sysex_send_buffer();
+    }
+    System::Delay(1000);
 
 #ifdef INCLUDE_SDCARD
     if (main_thread_do_save) {

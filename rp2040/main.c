@@ -12,7 +12,7 @@
 #include "lib/dac.h"
 #include "lib/i2c_fifo.h"
 #include "lib/i2c_slave.h"
-
+#include "quadrature_encoder.pio.h"
 static const uint TRANSFER_SIZE = 8;
 static const uint I2C_BAUDRATE = 400000;  // 100 kHz
 
@@ -92,6 +92,20 @@ int main() {
   }
 
   printf("hello world\n");
+
+  // setup encoders
+  const uint encoder_pins[7] = {10, 12, 14, 16, 18, 20, 28};
+  const uint encoder_sm[7] = {1, 2, 3, 0, 1, 2, 3};
+  pio_add_program(pio0, &quadrature_encoder_program);
+  pio_add_program(pio1, &quadrature_encoder_program);
+  for (int i = 0; i < 7; i++) {
+    if (i < 3) {
+      quadrature_encoder_program_init(pio0, encoder_sm[i], encoder_pins[i], 0);
+    } else {
+      quadrature_encoder_program_init(pio1, encoder_sm[i], encoder_pins[i], 0);
+    }
+  }
+
   // setup WS2812
   WS2812 *ws2812;
   ws2812 = WS2812_new(WS2812_PIN, pio0, WS2812_SM, WS2812_NUM_LEDS);
@@ -118,10 +132,16 @@ int main() {
       WS2812_show(ws2812);
 
       sleep_ms(1000 / 30 * 8);
+      for (int i = 0; i < 7; i++) {
+        int new_value;
+        if (i < 3) {
+          new_value = quadrature_encoder_get_count(pio0, encoder_sm[i]);
+        } else {
+          new_value = quadrature_encoder_get_count(pio1, encoder_sm[i]);
+        }
+        printf("%d ", new_value);
+      }
+      printf("\n");
     }
-  }
-
-  while (1) {
-    tight_loop_contents();
   }
 }

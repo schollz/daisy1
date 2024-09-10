@@ -27,6 +27,7 @@ add_executable(${PROJECT_NAME}
 
 
 pico_generate_pio_header(ouroboros ${CMAKE_CURRENT_LIST_DIR}/lib/WS2812.pio)
+pico_generate_pio_header(ouroboros ${CMAKE_CURRENT_LIST_DIR}/lib/quadrature_encoder.pio)
 
 # Create map/bin/hex/uf2 files
 pico_add_extra_outputs(${PROJECT_NAME})
@@ -34,13 +35,14 @@ pico_add_extra_outputs(${PROJECT_NAME})
 # Link to pico_stdlib (gpio, time, etc. functions)
 target_link_libraries(${PROJECT_NAME} 
     pico_stdlib
+    pico_multicore
     hardware_i2c
     hardware_pio
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     WS2812_PIN=22
-    WS2812_SM=2
+    WS2812_SM=0
     WS2812_NUM_LEDS=40
     PIN_I2C0_SDA=0
     PIN_I2C0_SCL=1

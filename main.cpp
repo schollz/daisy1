@@ -4,7 +4,7 @@
 // #define INCLUDE_COMPRESSOR
 // #define INCLUDE_SEQUENCER
 // #define INCLUDE_TAPE_LPF
-// #define INCLUDE_SDCARD
+#define INCLUDE_SDCARD
 //
 #include "core_cm7.h"
 #include "daisy_pod.h"
@@ -559,34 +559,34 @@ int main(void) {
 #define TRANSFER_SIZE 8
 
   while (1) {
-    // every second transmit data
-    // daisy_midi.sysex_printf_buffer("send ");
-    for (size_t i = 0; i < TRANSFER_SIZE; i++) {
-      i2c_buffer[i] = rand() % 255;
-      // daisy_midi.sysex_printf_buffer("%d ", i2c_buffer[i]);
-    }
-    // daisy_midi.sysex_printf_buffer("\n");
-    // daisy_midi.sysex_send_buffer();
-    i2c.TransmitBlocking(0x28, i2c_buffer, TRANSFER_SIZE, 1000);
-    // i2c.TransmitDma(0x28, i2c_buffer, TRANSFER_SIZE, NULL, NULL);
-    // request data
-    I2CHandle::Result res =
-        i2c.ReceiveBlocking(0x28, rx_data, TRANSFER_SIZE, 1000);
-    if (res == I2CHandle::Result::OK) {
-      // daisy_midi.sysex_printf_buffer("recv ");
-      for (size_t i = 0; i < TRANSFER_SIZE; i++) {
-        if (rx_data[i] != i2c_buffer[i]) {
-          daisy_midi.sysex_printf_buffer("error ");
-        }
-        // daisy_midi.sysex_printf_buffer("%d ", rx_data[i]);
-      }
-      // daisy_midi.sysex_printf_buffer("\n");
-      daisy_midi.sysex_send_buffer();
-    } else {
-      daisy_midi.sysex_printf_buffer("error %d\n", res);
-      daisy_midi.sysex_send_buffer();
-    }
-    System::Delay(1);
+    // // every second transmit data
+    // // daisy_midi.sysex_printf_buffer("send ");
+    // for (size_t i = 0; i < TRANSFER_SIZE; i++) {
+    //   i2c_buffer[i] = rand() % 255;
+    //   // daisy_midi.sysex_printf_buffer("%d ", i2c_buffer[i]);
+    // }
+    // // daisy_midi.sysex_printf_buffer("\n");
+    // // daisy_midi.sysex_send_buffer();
+    // i2c.TransmitBlocking(0x28, i2c_buffer, TRANSFER_SIZE, 1000);
+    // // i2c.TransmitDma(0x28, i2c_buffer, TRANSFER_SIZE, NULL, NULL);
+    // // request data
+    // I2CHandle::Result res =
+    //     i2c.ReceiveBlocking(0x28, rx_data, TRANSFER_SIZE, 1000);
+    // if (res == I2CHandle::Result::OK) {
+    //   // daisy_midi.sysex_printf_buffer("recv ");
+    //   for (size_t i = 0; i < TRANSFER_SIZE; i++) {
+    //     if (rx_data[i] != i2c_buffer[i]) {
+    //       daisy_midi.sysex_printf_buffer("error ");
+    //     }
+    //     // daisy_midi.sysex_printf_buffer("%d ", rx_data[i]);
+    //   }
+    //   // daisy_midi.sysex_printf_buffer("\n");
+    //   daisy_midi.sysex_send_buffer();
+    // } else {
+    //   daisy_midi.sysex_printf_buffer("error %d\n", res);
+    //   daisy_midi.sysex_send_buffer();
+    // }
+    // System::Delay(1);
 
 #ifdef INCLUDE_SDCARD
     if (main_thread_do_save) {

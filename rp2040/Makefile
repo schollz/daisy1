@@ -17,7 +17,7 @@ build:
 	echo "build success"
 
 upload: dobuild
-	curl localhost:7083
+	-curl localhost:7083
 	./lib/upload.sh 
 
 clean:

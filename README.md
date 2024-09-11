@@ -116,10 +116,10 @@ while true; do; screen /dev/ttyACM0; sleep 0.5; done
 (make sure you have `openocd` installed).
 
 ```
-
-make debug
-
+./gdb
 ```
+
+within gdb you can do `continue` to keep running, and `bt full` to get a full stack trace and `info local` to get information about variables.
 
 ## TODO:
 

@@ -28,6 +28,7 @@ void Tape::Init(size_t endpoints[2], CircularBuffer &buf_circular,
   SetTapeStart(buffer_min);
   SetTapeEnd(buffer_max);
   head_play_last_pos = buffer_start;
+  head_phase.store(buffer_start);
   head_rec.pos = buffer_start;
   head_rec.SetState(TapeHead::STOPPED);
   head_rec.SetStereo(is_stereo);
@@ -73,8 +74,13 @@ void Tape::SetPhaseEnd(float phase) {
   }
 }
 
+void Tape::SetPhase(size_t phase) { head_phase.store(phase); }
+
 float Tape::GetPhase() {
-  return ((float)(head_phase - buffer_start) /
+  if (buffer_end == buffer_start) {
+    return 0.0f;
+  }
+  return ((float)(head_phase.load() - buffer_start) /
           ((float)(buffer_end - buffer_start)));
 }
 
@@ -546,23 +552,27 @@ float linlin(float x, float in_min, float in_max, float out_min,
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-std::vector<uint8_t> Tape::Marshal() {
-  std::vector<uint8_t> data;
+void Tape::Marshal(uint8_t *data) {
   // get position of the head as percentage (0-255)
-  data.push_back(roundf(255.0f * GetPhase()));
-  data.push_back(roundf(255.0f * (head_play_last_pos - buffer_start) /
-                        (buffer_end - buffer_start)));
+  data[0] = (roundf(255.0f * GetPhase()));
 
-  data.push_back(
-      roundf(linlin(lfos[TAPE_LFO_PAN].Value(), -1.0f, 1.0f, 0, 255)));
+  // Avoid division by zero: check if (buffer_end - buffer_start) is non-zero
+  float buffer_range = buffer_end - buffer_start;
+  if (buffer_range == 0) {
+    data[1] = (0);  // or some other default value
+  } else {
+    data[1] =
+        (roundf(255.0f * (head_play_last_pos - buffer_start) / buffer_range));
+  }
 
-  data.push_back(
-      roundf(linlin(lfos[TAPE_LFO_AMP].Value(), 0.0f, 1.0f, 0, 255)));
+  data[2] = (roundf(linlin(lfos[TAPE_LFO_PAN].Value(), -1.0f, 1.0f, 0, 255)));
 
-  data.push_back(roundf(linlin(head_amp, 0.0f, 1.0f, 0, 255)));
+  data[3] = (roundf(linlin(lfos[TAPE_LFO_AMP].Value(), 0.0f, 1.0f, 0, 255)));
+
+  data[4] = (roundf(linlin(head_amp, 0.0f, 1.0f, 0, 255)));
 
   uint8_t b;
-  //  bit flags
+  // bit flags
   // bit 0: recording
   // bit 1: playing
   // bit 2: stopping
@@ -591,7 +601,5 @@ std::vector<uint8_t> Tape::Marshal() {
   if (IsPlaying()) {
     b |= 1 << 6;
   }
-  data.push_back(b);
-
-  return data;
+  data[5] = (b);
 }

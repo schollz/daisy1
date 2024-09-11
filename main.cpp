@@ -625,13 +625,14 @@ int main(void) {
 
     // send the tape information
     for (size_t i = 0; i < NUM_LOOPS; i++) {
-      std::vector<uint8_t> bytes = tape[i].Marshal();
+      uint8_t tape_marshal_bytes[6];
+      tape[i].Marshal(tape_marshal_bytes);
       tx_data[0] = 0x04;
       tx_data[1] = i;
-      for (size_t j = 0; j < bytes.size(); j++) {
-        tx_data[j + 2] = bytes[j];
+      for (size_t j = 0; j < 6; j++) {
+        tx_data[j + 2] = tape_marshal_bytes[j];
       }
-      i2c.TransmitBlocking(0x28, tx_data, bytes.size() + 2, 1000);
+      i2c.TransmitBlocking(0x28, tx_data, 6 + 2, 1000);
     }
 
     // send done signal

@@ -1,5 +1,6 @@
 #ifndef TAPE_H
 #define TAPE_H
+#include <atomic>
 #include <bitset>
 #include <cstring>
 #include <vector>
@@ -30,7 +31,7 @@ class Tape {
   TapeHead head_rec;
   TapeHead head_play[TAPE_PLAY_HEADS];
   size_t head_play_last_pos = 0;
-  size_t head_phase = 0;
+  std::atomic<size_t> head_phase;
   float head_amp = 0;
   size_t buffer_min = 0;
   size_t buffer_max = 1000;
@@ -74,9 +75,10 @@ class Tape {
   void SetTapeEnd(size_t pos);
   void SetPhaseStart(float phase);  // phase is 0-1
   void SetPhaseEnd(float phase);
+  void SetPhase(size_t phase);
   float GetPhase();
   float GetRate();
-  std::vector<uint8_t> Marshal();
+  void Marshal(uint8_t *data);
 
  private:
   bool has_recorded = false;

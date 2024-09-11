@@ -327,12 +327,38 @@ int main() {
 
       // draw the pan + amp
       int led1, led2;
-      find_closest_leds(tape[loop_index].pan, 12 + 90, &led1, &led2);
-      WS2812_fill(ws2812, 10 + led1, 255, 0, 0);
-      WS2812_fill(ws2812, 10 + led2, 255, 0, 0);
-      find_closest_leds(tape[loop_index].amp * 2.0f - 1.0f, 12, &led1, &led2);
-      WS2812_fill(ws2812, 10 + led1, 0, 0, 255);
-      WS2812_fill(ws2812, 10 + led2, 0, 0, 255);
+      float pan01 = tape[loop_index].pan;
+      if (pan01 < 0) {
+        pan01 = -pan01;
+      }
+      size_t led_start = 0;
+      size_t led_end = 15;
+      if (tape[loop_index].pan > 0) {
+        for (size_t x = 0; x <= 7; x++) {
+          float y = pan01;
+          float norm = exp(-1 * (x - (7 * y)) * (x - (7 * y)) /
+                           (2 * (2 * y + 0.2) * (2 * y + 0.2)));
+          int val = (int)round(128.0f * norm);
+          WS2812_fill(ws2812, 10 + x, val, 0, 0);
+          WS2812_fill(ws2812, 10 + ((7 - x) + 8) % 30, val, 0, 0);
+        }
+      } else {
+        for (size_t x = 0; x <= 7; x++) {
+          float y = pan01;
+          float norm = exp(-1 * (x - (7 * y)) * (x - (7 * y)) /
+                           (2 * (2 * y + 0.2) * (2 * y + 0.2)));
+          int val = (int)round(128.0f * norm);
+          WS2812_fill(ws2812, 10 + ((x + 15) % 30), val, 0, 0);
+          WS2812_fill(ws2812, 10 + (((((7 - x) + 15) % 30)) + 8) % 30, val, 0,
+                      0);
+        }
+      }
+      // find_closest_leds(tape[loop_index].pan, 12 + 90, &led1, &led2);
+      // WS2812_fill(ws2812, 10 + led1, 255, 0, 0);
+      // WS2812_fill(ws2812, 10 + led2, 255, 0, 0);
+      // find_closest_leds(tape[loop_index].amp * 2.0f - 1.0f, 12, &led1,
+      // &led2); WS2812_fill(ws2812, 10 + led1, 0, 0, 255); WS2812_fill(ws2812,
+      // 10 + led2, 0, 0, 255);
 
       // show the phase
       if (!tape[loop_index].is_playing) {

@@ -326,33 +326,71 @@ int main() {
       }
 
       // draw the pan + amp
-      int led1, led2;
-      float pan01 = tape[loop_index].pan;
-      if (pan01 < 0) {
-        pan01 = -pan01;
+      uint8_t r[30], g[30], b[30];
+      for (size_t i = 0; i < 30; i++) {
+        r[i] = 0;
+        g[i] = 0;
+        b[i] = 0;
       }
-      size_t led_start = 0;
-      size_t led_end = 15;
-      if (tape[loop_index].pan > 0) {
+
+      float vminus1to1 = tape[loop_index].pan;
+      float v01 = vminus1to1;
+      if (v01 < 0) {
+        v01 = -v01;
+      }
+      if (vminus1to1 > 0) {
         for (size_t x = 0; x <= 7; x++) {
-          float y = pan01;
+          float y = v01;
           float norm = exp(-1 * (x - (7 * y)) * (x - (7 * y)) /
                            (2 * (2 * y + 0.2) * (2 * y + 0.2)));
           int val = (int)round(128.0f * norm);
-          WS2812_fill(ws2812, 10 + x, val, 0, 0);
-          WS2812_fill(ws2812, 10 + ((7 - x) + 8) % 30, val, 0, 0);
+          r[x] = val;
+          r[((7 - x) + 8) % 30] = val;
         }
       } else {
         for (size_t x = 0; x <= 7; x++) {
-          float y = pan01;
+          float y = v01;
           float norm = exp(-1 * (x - (7 * y)) * (x - (7 * y)) /
                            (2 * (2 * y + 0.2) * (2 * y + 0.2)));
           int val = (int)round(128.0f * norm);
-          WS2812_fill(ws2812, 10 + ((x + 15) % 30), val, 0, 0);
-          WS2812_fill(ws2812, 10 + (((((7 - x) + 15) % 30)) + 8) % 30, val, 0,
-                      0);
+          r[((x + 15) % 30)] = val;
+          r[((((7 - x) + 15) % 30) + 8) % 30] = val;
         }
       }
+
+      vminus1to1 = tape[loop_index].amp * 2.0f - 1.0f;
+      v01 = vminus1to1;
+      if (v01 < 0) {
+        v01 = -v01;
+      }
+      if (vminus1to1 > 0) {
+        for (size_t x = 0; x <= 7; x++) {
+          float y = v01;
+          float norm = exp(-1 * (x - (7 * y)) * (x - (7 * y)) /
+                           (2 * (2 * y + 0.2) * (2 * y + 0.2)));
+          int val = (int)round(128.0f * norm);
+          b[x] = val;
+          b[((7 - x) + 8) % 30] = val;
+        }
+      } else {
+        for (size_t x = 0; x <= 7; x++) {
+          float y = v01;
+          float norm = exp(-1 * (x - (7 * y)) * (x - (7 * y)) /
+                           (2 * (2 * y + 0.2) * (2 * y + 0.2)));
+          int val = (int)round(128.0f * norm);
+          b[((x + 15) % 30)] = val;
+          b[((((7 - x) + 15) % 30) + 8) % 30] = val;
+        }
+      }
+
+      for (size_t i = 0; i < 30; i++) {
+        size_t j = i + 8;
+        if (j >= 30) {
+          j -= 30;
+        }
+        WS2812_fill(ws2812, 10 + i, r[j], g[i], b[i]);
+      }
+
       // find_closest_leds(tape[loop_index].pan, 12 + 90, &led1, &led2);
       // WS2812_fill(ws2812, 10 + led1, 255, 0, 0);
       // WS2812_fill(ws2812, 10 + led2, 255, 0, 0);

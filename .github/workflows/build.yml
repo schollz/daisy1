@@ -40,6 +40,10 @@ jobs:
     - name: Build ouroboros-audio
       run: |
         make all -j
+    - name: Install Pico SDK dependencies
+      run: |
+        sudo apt update
+        sudo apt install cmake gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential gcc
     - name: Checkout pico-sdk
       uses: actions/checkout@v4.1.7
       with:

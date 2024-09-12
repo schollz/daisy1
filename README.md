@@ -1,4 +1,4 @@
-# daisy1
+# ouroboros
 
 First thing with daisy
 
@@ -42,7 +42,7 @@ Install `arm-none-eabi-gcc` (correct version):
 
 ```
 cd $HOME/bin
-wget https://github.com/schollz/daisy1/releases/download/prereqs/gcc-arm-none-eabi-10-2020-q4-major.zip
+wget https://github.com/schollz/ouroboros/releases/download/prereqs/gcc-arm-none-eabi-10-2020-q4-major.zip
 unzip gcc-arm-none-eabi-10-2020-q4-major.zip
 rm gcc-arm-none-eabi-10-2020-q4-major.zip
 ```
@@ -58,8 +58,8 @@ export PATH=~/bin/gcc-arm-none-eabi-10-2020-q4-major/bin:$PATH
 ## cloning
 
 ```
-git clone https://github.com/schollz/daisy1
-cd daisy1
+git clone https://github.com/schollz/ouroboros
+cd ouroboros
 git submodule update --init --recursive
 cd libDaisy && make all -j8
 cd DaisySP && make all -j8

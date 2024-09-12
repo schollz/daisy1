@@ -1,6 +1,6 @@
 
 # Project Name
-TARGET = daisy1
+TARGET = ouroboros
 
 USE_DAISYSP_LGPL = 1
 

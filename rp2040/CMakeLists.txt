@@ -49,8 +49,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     PIN_I2C0_SCL=1
     PIN_I2C1_SDA=2
     PIN_I2C1_SCL=3
-    I2C_SLAVE_ADDRESS=0x28
-
+    RP2040_I2C_ADDRESS=0x28
 )
 # target_compile_options(command_line PUBLIC -Wall -Wextra -Wno-unused-function -Wno-unused-parameter)
 # target_compile_options(${PROJECT_NAME} PUBLIC -Wall -Wextra -Wno-unused-parameter)

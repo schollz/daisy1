@@ -36,6 +36,7 @@ Compressor compressor;
 
 uint8_t DMA_BUFFER_MEM_SECTION buffer_spi[4];
 #define INCLUDE_AUDIO_PROFILING 1
+#define RP2040_I2C_ADDRESS 0x28
 #define AUDIO_BLOCK_SIZE 128
 #define AUDIO_SAMPLE_RATE 48000
 #define CROSSFADE_PREROLL 4800
@@ -440,14 +441,12 @@ int main(void) {
   // start callback
   hw.StartAudio(AudioCallback);
 
-#define TRANSFER_SIZE 8
-
   while (1) {
     I2CHandle::Result res;
     // ask for the button values by sending 0x03
     tx_data[0] = 0x03;
-    i2c.TransmitBlocking(0x28, tx_data, 1, 1000);
-    res = i2c.ReceiveBlocking(0x28, rx_data, 6, 1000);
+    i2c.TransmitBlocking(RP2040_I2C_ADDRESS, tx_data, 1, 1000);
+    res = i2c.ReceiveBlocking(RP2040_I2C_ADDRESS, rx_data, 6, 1000);
     if (res == I2CHandle::Result::OK) {
       for (size_t i = 0; i < 6; i++) {
         button_values[i] = rx_data[i];
@@ -463,8 +462,8 @@ int main(void) {
     }
     // ask for encoder values by sending 0x01
     tx_data[0] = 0x01;
-    i2c.TransmitBlocking(0x28, tx_data, 1, 1000);
-    res = i2c.ReceiveBlocking(0x28, rx_data, 14, 1000);
+    i2c.TransmitBlocking(RP2040_I2C_ADDRESS, tx_data, 1, 1000);
+    res = i2c.ReceiveBlocking(RP2040_I2C_ADDRESS, rx_data, 14, 1000);
     if (res == I2CHandle::Result::OK) {
       for (size_t i = 0; i < 14; i += 2) {
         uint8_t byte1 = rx_data[i];
@@ -480,8 +479,8 @@ int main(void) {
     }
     // ask for the knob values by sending 0x02
     tx_data[0] = 0x02;
-    i2c.TransmitBlocking(0x28, tx_data, 1, 1000);
-    res = i2c.ReceiveBlocking(0x28, rx_data, 6, 1000);
+    i2c.TransmitBlocking(RP2040_I2C_ADDRESS, tx_data, 1, 1000);
+    res = i2c.ReceiveBlocking(RP2040_I2C_ADDRESS, rx_data, 6, 1000);
     if (res == I2CHandle::Result::OK) {
       for (size_t i = 0; i < 6; i += 2) {
         uint8_t byte1 = rx_data[i];
@@ -510,16 +509,12 @@ int main(void) {
       daisy_midi.sysex_printf_buffer("play");
       tape[loop_index].PlayingToggle();
     }
-    if (button_values[BTN_SHIFT] == 0 && button_pressed[BTN_RECORD]) {
-      daisy_midi.sysex_printf_buffer("record");
-      tape[loop_index].RecordingToggle();
-    }
     daisy_midi.sysex_send_buffer();
 
     // send some global information
     tx_data[0] = 0x05;
     tx_data[1] = loop_index;
-    i2c.TransmitBlocking(0x28, tx_data, 2, 1000);
+    i2c.TransmitBlocking(RP2040_I2C_ADDRESS, tx_data, 2, 1000);
 
     // send the tape information
     for (size_t i = 0; i < NUM_LOOPS; i++) {
@@ -530,12 +525,12 @@ int main(void) {
       for (size_t j = 0; j < 6; j++) {
         tx_data[j + 2] = tape_marshal_bytes[j];
       }
-      i2c.TransmitBlocking(0x28, tx_data, 6 + 2, 1000);
+      i2c.TransmitBlocking(RP2040_I2C_ADDRESS, tx_data, 6 + 2, 1000);
     }
 
     // send done signal
     tx_data[0] = 0x06;
-    i2c.TransmitBlocking(0x28, tx_data, 1, 1000);
+    i2c.TransmitBlocking(RP2040_I2C_ADDRESS, tx_data, 1, 1000);
 
     System::Delay(60);
 

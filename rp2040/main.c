@@ -168,7 +168,7 @@ int main() {
   gpio_set_function(PIN_I2C0_SCL, GPIO_FUNC_I2C);
   gpio_pull_up(PIN_I2C0_SCL);
   i2c_init(i2c0, I2C_BAUDRATE);
-  i2c_slave_init(i2c0, I2C_SLAVE_ADDRESS, &i2c_slave_handler);
+  i2c_slave_init(i2c0, RP2040_I2C_ADDRESS, &i2c_slave_handler);
 
   // setup i2c1
   gpio_init(PIN_I2C1_SDA);

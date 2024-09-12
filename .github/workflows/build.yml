@@ -39,5 +39,4 @@ jobs:
         cd ../DaisySP && make all -j
     - name: Build main
       run: |
-        make lib/crossfade.h
         make all -j

@@ -66,44 +66,6 @@ static struct {
   bool mem_address_written;
 } context;
 
-#define NUM_LEDS 30
-#define PI 3.14159265358979323846
-
-// Convert degrees to radians
-float degrees_to_radians(float degrees) { return degrees * (PI / 180.0); }
-
-void find_closest_leds(float y, float rotation_degrees, int *led1, int *led2) {
-  if (y < -1 || y > 1) {
-    printf("y-coordinate out of range\n");
-    return;
-  }
-
-  // Convert rotation from degrees to radians
-  float rotation_radians = degrees_to_radians(rotation_degrees);
-
-  // Calculate the two x-coordinates on the unit circle for the given y
-  float x1 = sqrt(1 - y * y);
-  float x2 = -x1;
-
-  // Calculate angles for the two points (y, x1) and (y, x2)
-  float theta1 = atan2(y, x1);  // Angle in radians
-  float theta2 = atan2(y, x2);
-
-  // Add the rotation to the angles
-  theta1 += rotation_radians;
-  theta2 += rotation_radians;
-
-  // Normalize angles to [0, 2*PI] range
-  if (theta1 < 0) theta1 += 2 * PI;
-  if (theta1 >= 2 * PI) theta1 -= 2 * PI;
-  if (theta2 < 0) theta2 += 2 * PI;
-  if (theta2 >= 2 * PI) theta2 -= 2 * PI;
-
-  // Convert angles to LED indices
-  *led1 = (int)(theta1 / (2 * PI) * NUM_LEDS) % NUM_LEDS;
-  *led2 = (int)(theta2 / (2 * PI) * NUM_LEDS) % NUM_LEDS;
-}
-
 // Our handler is called from the I2C ISR, so it must complete quickly. Blocking
 // calls / printing to stdio may interfere with interrupt handling.
 static void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
@@ -261,20 +223,9 @@ int main() {
   DAC_update(dac);
 
   uint8_t ws2812_show_counter = 0;
+  uint32_t ws2812_last_update_time = to_ms_since_boot(get_absolute_time());
   while (1) {
-    // for (int ledi = 4 + 6; ledi < 40; ledi++) {
-    //   for (int i = 0; i < WS2812_NUM_LEDS; i++) {
-    //     if (i < 4 + 6) {
-    //       WS2812_fill(ws2812, i, 0, 0, 0);
-    //     } else if (i != ledi) {
-    //       WS2812_fill(ws2812, i, 0, 255, 0);
-    //     } else {
-    //       WS2812_fill(ws2812, i, 255, 0, 0);
-    //     }
-    //   }
-    //   WS2812_show(ws2812);
-
-    //   sleep_ms(1000 / 30 * 8);
+    uint32_t ct = to_ms_since_boot(get_absolute_time());
 
     // read potentiometers
     for (uint8_t knob = 0; knob < 3; knob++) {
@@ -304,10 +255,9 @@ int main() {
       }
     }
     startup_first_run = false;
-    sleep_ms(3);
 
     // visualize
-    if (i2c_done_signal) {
+    if (i2c_done_signal && (ct - ws2812_last_update_time) > 100) {
       // show loop_index
       for (uint8_t i = 0; i < 6; i++) {
         uint8_t r, g, b;
@@ -391,13 +341,6 @@ int main() {
         WS2812_fill(ws2812, 10 + i, r[j], g[i], b[i]);
       }
 
-      // find_closest_leds(tape[loop_index].pan, 12 + 90, &led1, &led2);
-      // WS2812_fill(ws2812, 10 + led1, 255, 0, 0);
-      // WS2812_fill(ws2812, 10 + led2, 255, 0, 0);
-      // find_closest_leds(tape[loop_index].amp * 2.0f - 1.0f, 12, &led1,
-      // &led2); WS2812_fill(ws2812, 10 + led1, 0, 0, 255); WS2812_fill(ws2812,
-      // 10 + led2, 0, 0, 255);
-
       // show the phase
       if (!tape[loop_index].is_playing) {
         WS2812_fill(ws2812, 10.0f + roundf(29.0f * tape[loop_index].phase), 255,
@@ -439,5 +382,8 @@ int main() {
     if (i2c_done_signal) {
       i2c_done_signal = false;
     }
+
+    // control loop runs at 1000 hz
+    sleep_ms(1);
   }
 }

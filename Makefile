@@ -22,6 +22,7 @@ CPP_SOURCES = main.cpp \
 	lib/lpf_biquad.cpp \
 	lib/compressor.cpp \
 	lib/daisy_midi.cpp \
+	lib/wavheader.cpp \
 	lib/chords.cpp
 # lib/fverb2.cpp \
 # lib/lpf_oberheim.cpp \

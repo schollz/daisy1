@@ -24,11 +24,6 @@ CPP_SOURCES = main.cpp \
 	lib/daisy_midi.cpp \
 	lib/wavheader.cpp \
 	lib/chords.cpp
-# lib/fverb2.cpp \
-# lib/lpf_oberheim.cpp \
-# lib/lpf_sallenkey_onepole.cpp \
-# lib/lpf_korg.cpp \
-# lib/lpf_diodeladder.cpp \
 	
 # C_SOURCES = audio.c
 

@@ -86,26 +86,6 @@ float noteNumberToVoltage(uint8_t note) {
   return (((float)note) - 48.0f) / 12.0f;
 }
 
-uint8_t DMA_BUFFER_MEM_SECTION i2c_buffer[64];
-void writeNoteCV(uint8_t note) {
-  float voltage = noteNumberToVoltage(note);
-  uint16_t val = roundf(voltage / 3.235 * 4095);
-  // DAC
-  // // Prepare data to send
-  i2c_buffer[0] = (val >> 8) & 0x0F;  // Upper 4 bits of the 12-bit value
-  i2c_buffer[1] = val & 0xFF;         // Lower 8 bits of the 12-bit value
-
-  // Transmit the data
-  // uint8_t data[2];
-  // data[0] = (val >> 8) & 0x0F;
-  // data[1] = val & 0xFF;
-  // i2c.TransmitBlocking(0x60, data, 2, 1000);
-  i2c.TransmitDma(0x60, i2c_buffer, 2, NULL, NULL);
-
-  daisy_midi.sysex_printf_buffer("[writeNoteCV] writing %2.3f volts (%d)\n",
-                                 voltage, val);
-}
-
 #define NUM_LOOPS 6
 float bpm_set = 30.0f;
 size_t loop_index = 0;

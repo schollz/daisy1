@@ -328,15 +328,13 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
 #endif
 }
 
+// i2c tx/rx bufferes
 uint8_t DMA_BUFFER_MEM_SECTION tx_data[16] = {0, 0, 0, 0, 0, 0, 0, 0,
                                               0, 0, 0, 0, 0, 0, 0, 0};
 uint8_t DMA_BUFFER_MEM_SECTION rx_data[64];
-
 bool i2c_tx_done = false;
 bool i2c_rx_done = false;
-
 void I2C_TxCallback(void* context) { i2c_tx_done = true; }
-
 void I2C_RxCallback(void* context, I2CHandle::Result result) {
   if (result == I2CHandle::Result::OK) {
     i2c_rx_done = true;
@@ -371,8 +369,7 @@ int main(void) {
 
   chords.Regenerate(true);
 
-  // initialize i2c
-
+  // initialize i2c to communicate
   I2CHandle::Config i2c_conf;
   i2c_conf.periph = I2CHandle::Config::Peripheral::I2C_1;
   i2c_conf.speed = I2CHandle::Config::Speed::I2C_400KHZ;
@@ -388,6 +385,7 @@ int main(void) {
 #ifdef INCLUDE_REVERB
       initializeReverb();
 #endif
+
 #ifdef INCLUDE_REVERB_VEC
   fverb2.init(AUDIO_SAMPLE_RATE);
 #endif
@@ -413,15 +411,6 @@ int main(void) {
   memset(tape_linear_buffer, 0, sizeof(tape_linear_buffer));
   memset(audiocallback_bufin, 0, sizeof(audiocallback_bufin));
   memset(audiocallback_bufout, 0, sizeof(audiocallback_bufout));
-
-  my_colors[0].Init(Color::PresetColor::RED);
-  my_colors[1].Init(Color::PresetColor::GREEN);
-  my_colors[2].Init(Color::PresetColor::WHITE);
-  // yellow
-  my_colors[3].Init(0.9f, 0.9f, 0.0f);
-  my_colors[4].Init(Color::PresetColor::BLUE);
-  hw.led1.SetColor(my_colors[0]);
-  hw.led1.Update();
 
   print_timer.Init(1.0f, AUDIO_SAMPLE_RATE / AUDIO_BLOCK_SIZE);
   bpm_measure.Init(bpm_set / 60.0f / 10, AUDIO_SAMPLE_RATE / AUDIO_BLOCK_SIZE);
@@ -449,7 +438,6 @@ int main(void) {
   hw.SetAudioBlockSize(AUDIO_BLOCK_SIZE);
 
   // start callback
-  hw.StartAdc();
   hw.StartAudio(AudioCallback);
 
 #define TRANSFER_SIZE 8
@@ -574,106 +562,6 @@ float knobs_last[2] = {0, 0};
 float knobs_current[2] = {0, 0};
 float button_time_pressed[3] = {0, 0};
 void Controls(float audio_level) {
-  hw.ProcessAnalogControls();
-  hw.ProcessDigitalControls();
-
-  /* update buttons */
-  if (hw.button1.Pressed()) {
-    button_time_pressed[0] = hw.button1.TimeHeldMs();
-  }
-  if (hw.button1.FallingEdge()) {
-    if (button_time_pressed[0] > 400) {
-      daisy_midi.sysex_printf_buffer("button1 long press");
-      tape[loop_index].PlayingReset();
-      tape[loop_index].PlayingStart();
-    } else {
-      daisy_midi.sysex_printf_buffer("button1 short press");
-      tape[loop_index].PlayingToggle();
-    }
-  }
-  if (hw.button2.Pressed()) {
-    button_time_pressed[1] = hw.button2.TimeHeldMs();
-  }
-  if (hw.button2.FallingEdge()) {
-    if (button_time_pressed[1] > 400) {
-      tape[loop_index].RecordingErase();
-      daisy_midi.sysex_printf_buffer("button2 long press, %d-%d",
-                                     tape[loop_index].buffer_start,
-                                     tape[loop_index].buffer_end);
-    } else {
-      tape[loop_index].RecordingToggle();
-      daisy_midi.sysex_printf_buffer("button2 short press, %d-%d",
-                                     tape[loop_index].buffer_start,
-                                     tape[loop_index].buffer_end);
-    }
-  }
-  // TODO CHECK IF PRIMED
-  // if (audio_level > 2 && !tape[loop_index].IsRecording()) {
-  //   tape[loop_index].RecordingStart();
-  // } else if (audio_level < 0.01 && tape[loop_index].IsRecording()) {
-  //   tape[loop_index].RecordingStop();
-  // }
-  if (hw.encoder.Pressed()) {
-    button_time_pressed[2] = hw.encoder.TimeHeldMs();
-  }
-  if (hw.encoder.FallingEdge()) {
-    if (button_time_pressed[2] > 400) {
-      daisy_midi.sysex_printf_buffer("encoder long press");
-      main_thread_do_load = true;
-    } else {
-      daisy_midi.sysex_printf_buffer("encoder short press");
-      main_thread_do_save = true;
-    }
-  }
-
-  /* update leds */
-  if (tape[loop_index].IsPlayingOrFading()) {
-    hw.led1.SetColor(my_colors[1]);
-  } else {
-    hw.led1.SetColor(my_colors[(loop_index % 3) + 2]);
-  }
-  hw.led1.Update();
-  if (tape[loop_index].IsRecording()) {
-    hw.led2.SetColor(my_colors[0]);
-  } else {
-    hw.led2.SetColor(my_colors[(loop_index % 3) + 2]);
-  }
-  hw.led2.Update();
-
-  /* update encoder */
-  int inc = hw.encoder.Increment();
-  if (inc != 0) {
-    encoder_increment += inc;
-    controls_changed = true;
-    if (encoder_increment < 0) {
-      loop_index = 0;
-    } else if (encoder_increment < NUM_LOOPS) {
-      loop_index = encoder_increment;
-    }
-    // loop_index = abs(encoder_increment) % NUM_LOOPS;
-  }
-
-  // make array of knob processes
-  knobs_current[0] = roundf(hw.knob1.Process() * 100) / 100;
-  if (knobs_current[0] != knobs_last[0]) {
-    knobs_last[0] = knobs_current[0];
-    tape[loop_index].lfos[2].SetValue(knobs_current[0]);
-    // tape[loop_index].SetPan(knobs_current[0] * 2.0f - 1.0f);
-    controls_changed = true;
-#ifdef INCLUDE_COMPRESSOR
-    compressor.Set(knobs_current[0]);
-#endif
-    // if (tape[loop_index].IsPlayingOrFading()) {
-    //   tape[loop_index].SetRate(hw.knob1.Process() * 2);
-    // }
-  }
-  knobs_current[1] = roundf(hw.knob2.Process() * 100) / 100;
-  if (knobs_current[1] != knobs_last[1]) {
-    knobs_last[1] = knobs_current[1];
-    reverb_wet_dry = hw.knob2.Process();
-    controls_changed = true;
-  }
-
   if (bpm_measure_quarter.Process()) {
 #ifdef INCLUDE_SEQUENCER
     measure_beat_count++;

@@ -1,10 +1,11 @@
 // definitions
-// #define INCLUDE_REVERB
 #define INCLUDE_REVERB_VEC
-// #define INCLUDE_COMPRESSOR
-// #define INCLUDE_SEQUENCER
-// #define INCLUDE_TAPE_LPF
+#define INCLUDE_COMPRESSOR
+#define INCLUDE_SEQUENCER
 #define INCLUDE_SDCARD
+// #define INCLUDE_TAPE_LPF
+// old
+// #define INCLUDE_REVERB
 //
 #include "core_cm7.h"
 #include "daisy_pod.h"
@@ -17,6 +18,7 @@
 #include "lib/daisy_midi.h"
 #include "lib/lfo.h"
 #include "lib/tape.h"
+#include "lib/utils.h"
 #include "lib/wavheader.h"
 
 #ifdef INCLUDE_REVERB
@@ -28,9 +30,7 @@
 #endif
 
 #ifdef INCLUDE_COMPRESSOR
-// for some reason the non-vectorized is faster by 3%
 #include "lib/compressor.h"
-// #include "lib/compressor_vec.h"
 Compressor compressor;
 #endif
 
@@ -79,13 +79,6 @@ float reverb_wet_dry = 0;
 int measure_measure_count = -1;
 int measure_beat_count = -1;
 
-float noteNumberToFrequency(uint8_t note) {
-  return 440.0f * powf(2.0f, (((float)note) - 69) / 12.0f);
-}
-float noteNumberToVoltage(uint8_t note) {
-  return (((float)note) - 48.0f) / 12.0f;
-}
-
 #define NUM_LOOPS 6
 float bpm_set = 30.0f;
 size_t loop_index = 0;
@@ -101,13 +94,6 @@ float DSY_SDRAM_BSS tape_linear_buffer[MAX_SIZE];
 float drywet = 0.5f;
 
 void Controls(float audio_level);
-void SetVoltage(float voltage) {
-  voltage -= 0.055f;
-  float val = roundf(1281.572171 * voltage - 12.21070518);
-  if (val > 4095) val = 4095;
-  if (val < 0) val = 0;
-  daisyseed.dac.WriteValue(DacHandle::Channel::TWO, val);
-}
 
 #ifdef INCLUDE_SDCARD
 void sdcard_write_or_read(bool do_write) {
@@ -423,8 +409,6 @@ int main(void) {
   cfg.chn = DacHandle::Channel::TWO;
   daisyseed.dac.Init(cfg);
 
-  SetVoltage(1.234f);
-
   // erase buf
   memset(tape_linear_buffer, 0, sizeof(tape_linear_buffer));
   memset(audiocallback_bufin, 0, sizeof(audiocallback_bufin));
@@ -724,7 +708,6 @@ void Controls(float audio_level) {
     daisy_midi.sysex_printf_buffer("[%d] measure %d beat: %d note: %d\n",
                                    new_recording, measure_beat_count / 4,
                                    measure_beat_count % 4, note_to_play);
-    writeNoteCV(note_to_play);
 #endif
   }
   if (print_timer.Process()) {

@@ -23,6 +23,7 @@ CPP_SOURCES = main.cpp \
 	lib/compressor.cpp \
 	lib/daisy_midi.cpp \
 	lib/wavheader.cpp \
+	lib/utils.cpp \
 	lib/chords.cpp
 	
 # C_SOURCES = audio.c

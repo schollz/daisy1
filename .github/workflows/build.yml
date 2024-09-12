@@ -37,6 +37,22 @@ jobs:
         git submodule update --init --recursive
         cd libDaisy && make all -j
         cd ../DaisySP && make all -j
-    - name: Build main
+    - name: Build ouroboros-audio
       run: |
         make all -j
+    - name: Checkout pico-sdk
+      uses: actions/checkout@v4.1.7
+      with:
+        repository: raspberrypi/pico-sdk
+        path: pico-sdk
+        submodules: true
+        ref: 1.5.1
+    - name: Patch tinyusb
+      run: |
+        sed -i 's/OSAL_TIMEOUT_WAIT_FOREVER/OSAL_TIMEOUT_NORMAL/g' $GITHUB_WORKSPACE/pico-sdk/lib/tinyusb/src/tusb.c
+        cat $GITHUB_WORKSPACE/pico-sdk/lib/tinyusb/src/tusb.c | grep osal_mutex
+    - name: Set PICO_SDK_PATH
+      run: echo "PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk" >> $GITHUB_ENV
+    - name: Build ouroboros-control
+      run:
+        cd rp2040 && make -j

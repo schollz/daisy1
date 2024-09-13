@@ -23,6 +23,7 @@ pico_sdk_init()
 add_executable(${PROJECT_NAME} 
     main.c
     ${CMAKE_CURRENT_LIST_DIR}/lib/i2c_slave.c
+    ${CMAKE_CURRENT_LIST_DIR}/lib/adsr.c
 )
 
 

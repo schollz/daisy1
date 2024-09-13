@@ -43,7 +43,7 @@ Install `arm-none-eabi-gcc` (correct version):
 ```
 cd $HOME/bin
 wget https://github.com/schollz/ouroboros/releases/download/prereqs/gcc-arm-none-eabi-10-2020-q4-major.zip
-unzip gcc-arm-none-eabi-10-2020-q4-major.zip
+unzip gcc-arm-none-eabi-10-2020cd-q4-major.zip
 rm gcc-arm-none-eabi-10-2020-q4-major.zip
 ```
 

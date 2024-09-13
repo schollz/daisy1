@@ -17,6 +17,7 @@
 #include "lib/i2c_slave.h"
 #include "lib/knob_change.h"
 #include "lib/utils.h"
+#include "lib/adsr.h"
 //
 #include "quadrature_encoder.pio.h"
 
@@ -49,6 +50,7 @@ static const uint I2C_BAUDRATE = 400000;  // 400 kHz
 // global information
 uint8_t loop_index = 0;
 
+Adsr *adsr;
 Tape tape[6];
 const uint encoder_pins[7] = {10, 12, 14, 16, 18, 20, 28};
 const uint encoder_sm[7] = {1, 2, 3, 0, 1, 2, 3};

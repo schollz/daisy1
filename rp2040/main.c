@@ -4,22 +4,36 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 //
 #include "hardware/adc.h"
+#include "hardware/i2c.h"
+#include "hardware/irq.h"
+#include "pico/bootrom.h"
 #include "pico/stdlib.h"
 //
+#ifdef INCLUDE_MIDI
+#include "bsp/board.h"
+#include "tusb.h"
+#endif
+//
+#include "quadrature_encoder.pio.h"
+//
 #include "lib/WS2812.h"
+#include "lib/adenv.h"
 #include "lib/dac.h"
 #include "lib/filterexp.h"
 #include "lib/i2c_fifo.h"
 #include "lib/i2c_slave.h"
 #include "lib/knob_change.h"
+#ifdef INCLUDE_MIDI
+#include "lib/midi_comm.h"
+#include "lib/midi_out.h"
+#endif
 #include "lib/utils.h"
-#include "lib/adsr.h"
-//
-#include "quadrature_encoder.pio.h"
 
 #define LED_PLAY 9
 #define LED_RECORD 8
@@ -50,7 +64,7 @@ static const uint I2C_BAUDRATE = 400000;  // 400 kHz
 // global information
 uint8_t loop_index = 0;
 
-Adsr *adsr;
+AdEnv *envelope;
 Tape tape[6];
 const uint encoder_pins[7] = {10, 12, 14, 16, 18, 20, 28};
 const uint encoder_sm[7] = {1, 2, 3, 0, 1, 2, 3};
@@ -158,6 +172,12 @@ static void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
   }
 }
 
+void midi_callback(uint8_t status, uint8_t channel, uint8_t note,
+                   uint8_t velocity) {
+  printf("status %x channel %x note %x velocity %x\n", status, channel, note,
+         velocity);
+}
+
 int main() {
   bool startup_first_run = true;
   stdio_init_all();
@@ -216,6 +236,11 @@ int main() {
   ws2812 = WS2812_new(WS2812_PIN, pio0, WS2812_SM, WS2812_NUM_LEDS);
   WS2812_set_brightness(ws2812, 60);
 
+// setup USB midi
+#ifdef INCLUDE_MIDI
+  tusb_init();
+#endif
+
   DAC *dac;
   dac = DAC_malloc();
   DAC_set_voltage(dac, 0, 3.95);
@@ -227,6 +252,11 @@ int main() {
   uint8_t ws2812_show_counter = 0;
   uint32_t ws2812_last_update_time = to_ms_since_boot(get_absolute_time());
   while (1) {
+#ifdef INCLUDE_MIDI
+    tud_task();
+    midi_comm_task(midi_callback);
+#endif
+
     uint32_t ct = to_ms_since_boot(get_absolute_time());
 
     // read potentiometers

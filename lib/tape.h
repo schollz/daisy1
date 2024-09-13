@@ -38,7 +38,8 @@ class Tape {
   size_t buffer_start = 1000;
   size_t buffer_end = buffer_start + buffer_max;
   size_t endpoints[2];
-  float pan = 0;
+  float pan_set = 0.0f;
+  float amp_set = 1.0f;
   float rate = 1.0f;
   size_t rate_input_size = 0;
 
@@ -69,6 +70,7 @@ class Tape {
   void Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
                float *out, size_t size, uint32_t current_time);
   void SetPan(float pan);
+  void SetAmp(float amp);
   void SetRate(float rate);
   void SetPitch(int pitch);
   void SetTapeStart(size_t pos);

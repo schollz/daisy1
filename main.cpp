@@ -121,7 +121,8 @@ void sdcard_write_or_read(bool do_write) {
     uint64_t max;
     uint64_t start;
     uint64_t end;
-    float pan;
+    float pan_set;
+    float amp_set;
     float rate;
     int32_t rate_input_size;
   };
@@ -136,7 +137,8 @@ void sdcard_write_or_read(bool do_write) {
         dataArray[i].max = tape[i].buffer_max;
         dataArray[i].start = tape[i].buffer_start;
         dataArray[i].end = tape[i].buffer_end;
-        dataArray[i].pan = tape[i].pan;
+        dataArray[i].pan_set = tape[i].pan_set;
+        dataArray[i].amp_set = tape[i].amp_set;
         dataArray[i].rate = tape[i].rate;
         dataArray[i].rate_input_size = tape[i].rate_input_size;
       }
@@ -227,7 +229,8 @@ void sdcard_write_or_read(bool do_write) {
         tape[i].buffer_max = dataArray[i].max;
         tape[i].SetTapeStart(dataArray[i].start);
         tape[i].SetTapeEnd(dataArray[i].end);
-        tape[i].pan = dataArray[i].pan;
+        tape[i].pan_set = dataArray[i].pan_set;
+        tape[i].amp_set = dataArray[i].amp_set;
         tape[i].rate = dataArray[i].rate;
         tape[i].rate_input_size = dataArray[i].rate_input_size;
       }

@@ -426,7 +426,6 @@ int main() {
     // update the envelope
     if (next_note_play) {
       AdEnv_Trigger(envelope);
-      next_note_play = false;
       float voltage = ((float)next_note_value - 48.0f) / 12.0f;
       if (voltage >= 0 && voltage <= 4.0f) {
         DAC_set_voltage(dac, 0, voltage);

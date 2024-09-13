@@ -1,6 +1,15 @@
 
 #include "tape.h"
 
+float float_clamp(float x, float min, float max) {
+  if (x < min) {
+    return min;
+  } else if (x > max) {
+    return max;
+  }
+  return x;
+}
+
 #define POST_ROLL_FRACTION 0.875f
 // Reset can be used to change between stereo and mono
 void Tape::Reset(CircularBuffer &buf_circular, float sample_rate,
@@ -458,13 +467,13 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
 
     // // apply amplitude modulation
     lfos[TAPE_LFO_AMP].Update(current_time);
-    // float val = lfos[TAPE_LFO_AMP].Value();
-    // for (size_t i = 0; i < input_size; i++) {
-    //   outl1[i] = outl1[i] * val;
-    //   if (is_stereo) {
-    //     outr1[i] = outr1[i] * val;
-    //   }
-    // }
+    float val = amp_set;  // amp_set * lfos[TAPE_LFO_AMP].Value();
+    for (size_t i = 0; i < input_size; i++) {
+      outl1[i] = outl1[i] * val;
+      if (is_stereo) {
+        outr1[i] = outr1[i] * val;
+      }
+    }
 
     // apply resampling which will resize `out*1` into `out*2`
     // where `out*2` is the correct number of samples to send out
@@ -493,8 +502,9 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
         outr2[i] = outl2[i];
       }
     }
-    Balance2_Process(outl2, outr2, size_deinterleaved,
-                     lfos[TAPE_LFO_PAN].Value());
+    Balance2_Process(
+        outl2, outr2, size_deinterleaved,
+        float_clamp(pan_set + lfos[TAPE_LFO_PAN].Value(), -1.0f, 1.0f));
 
     // re-interleave and add the output to the main
     for (size_t i = 0; i < size_interleaved; i += 2) {
@@ -504,7 +514,9 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
   }
 }
 
-void Tape::SetPan(float pan) { this->pan = pan; }
+void Tape::SetPan(float pan) { this->pan_set = pan; }
+
+void Tape::SetAmp(float amp) { this->amp_set = amp; }
 
 void Tape::SetRate(float rate) {
   this->rate = rate;

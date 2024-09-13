@@ -60,7 +60,8 @@ typedef struct Tape {
 
 static const uint TRANSFER_SIZE = 8;
 static const uint I2C_BAUDRATE = 400000;  // 400 kHz
-
+static const int LOOP_SAMPLERATE = 100;
+static const int LOOP_SLEEP_US = 1000000 / LOOP_SAMPLERATE;
 // global information
 uint8_t loop_index = 0;
 
@@ -69,6 +70,8 @@ Tape tape[6];
 const uint encoder_pins[7] = {10, 12, 14, 16, 18, 20, 28};
 const uint encoder_sm[7] = {1, 2, 3, 0, 1, 2, 3};
 int encoder_values[7] = {0, 0, 0, 0, 0, 0, 0};
+bool next_note_play = false;
+int next_note_value = 0;
 
 int knob_values[3] = {0, 0, 0};
 bool knob_changed[3] = {false, false, false};
@@ -164,6 +167,12 @@ static void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
         loop_index = context.mem[1];
       } else if (context.mem[0] == 0x06) {
         i2c_done_signal = true;
+      } else if (context.mem[0] == 0x07) {
+        // play a note
+        uint8_t note = context.mem[1];
+        next_note_play = true;
+        next_note_value = (int)note;
+        AdEnv_Trigger(envelope);
       }
       context.mem_address_written = false;
       break;
@@ -241,6 +250,7 @@ int main() {
   tusb_init();
 #endif
 
+  // setup the dac
   DAC *dac;
   dac = DAC_malloc();
   DAC_set_voltage(dac, 0, 3.95);
@@ -248,6 +258,9 @@ int main() {
   DAC_set_voltage(dac, 2, 1.95);
   DAC_set_voltage(dac, 3, 0.95);
   DAC_update(dac);
+
+  // setup envelope
+  AdEnv_Init(envelope, LOOP_SAMPLERATE);
 
   uint8_t ws2812_show_counter = 0;
   uint32_t ws2812_last_update_time = to_ms_since_boot(get_absolute_time());
@@ -410,12 +423,24 @@ int main() {
       WS2812_show(ws2812);
     }
 
+    // update the envelope
+    if (next_note_play) {
+      AdEnv_Trigger(envelope);
+      next_note_play = false;
+      float voltage = ((float)next_note_value - 48.0f) / 12.0f;
+      if (voltage >= 0 && voltage <= 4.0f) {
+        DAC_set_voltage(dac, 0, voltage);
+      }
+    }
+    DAC_set_voltage(dac, 1, AdEnv_Process(envelope) * 4.0f);
+    DAC_update(dac);
+
     // reset the i2c_done_signal
     if (i2c_done_signal) {
       i2c_done_signal = false;
     }
 
-    // control loop runs at 1000 hz
-    sleep_ms(1);
+    // control loop runs at LOOP_SAMPLERATE
+    sleep_us(LOOP_SLEEP_US);
   }
 }

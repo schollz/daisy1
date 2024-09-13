@@ -89,6 +89,8 @@ Tape tape[NUM_LOOPS];
 Metro print_timer;
 Metro bpm_measure;          // 4 quarer notes
 Metro bpm_measure_quarter;  // 1 quarter note
+int next_note_value = 0;
+bool next_note_play = false;
 
 CircularBuffer tape_circular_buffer(CROSSFADE_PREROLL);
 float DSY_SDRAM_BSS tape_linear_buffer[MAX_SIZE];
@@ -527,6 +529,13 @@ int main(void) {
       }
       i2c.TransmitBlocking(RP2040_I2C_ADDRESS, tx_data, 6 + 2, 1000);
     }
+    // send the note information
+    if (next_note_play) {
+      tx_data[0] = 0x07;
+      tx_data[1] = next_note_value;
+      i2c.TransmitBlocking(RP2040_I2C_ADDRESS, tx_data, 2, 1000);
+      next_note_play = false;
+    }
 
     // send done signal
     tx_data[0] = 0x06;
@@ -571,23 +580,28 @@ void Controls(float audio_level) {
       //     tape[i].PlayingRestart();
       //   }
       // }
-      if (tape[loop_index].IsRecording()) {
-        tape[loop_index].RecordingStop();
-        loop_index++;
-        loop_index = loop_index % NUM_LOOPS;
-      }
-      // TODO: option to automate recording
-      if (measure_beat_count / 4 < 12 && (measure_beat_count / 4) % 2 == 0) {
-        // prepare the next loop for recording
-        if (tape[(loop_index + 1) % NUM_LOOPS].IsPlayingOrFading()) {
-          tape[(loop_index + 1) % NUM_LOOPS].PlayingStop();
-        }
-        tape[loop_index].RecordingStart();
-        new_recording = true;
-      }
+
+      // // TODO: option to increment the loop index
+      // if (tape[loop_index].IsRecording()) {
+      //   tape[loop_index].RecordingStop();
+      //   loop_index++;
+      //   loop_index = loop_index % NUM_LOOPS;
+      // }
+
+      // // TODO: option to automate recording
+      // if (measure_beat_count / 4 < 12 && (measure_beat_count / 4) % 2 == 0) {
+      //   // prepare the next loop for recording
+      //   if (tape[(loop_index + 1) % NUM_LOOPS].IsPlayingOrFading()) {
+      //     tape[(loop_index + 1) % NUM_LOOPS].PlayingStop();
+      //   }
+      //   tape[loop_index].RecordingStart();
+      //   new_recording = true;
+      // }
     }
     int note_to_play = chords.note_sequence[measure_beat_count % 12] +
                        chords.note_octaves[(measure_beat_count / 4) % 3];
+    next_note_value = note_to_play;
+    next_note_play = true;
     daisy_midi.sysex_printf_buffer("[%d] measure %d beat: %d note: %d\n",
                                    new_recording, measure_beat_count / 4,
                                    measure_beat_count % 4, note_to_play);

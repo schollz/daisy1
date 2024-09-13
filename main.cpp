@@ -532,7 +532,7 @@ int main(void) {
     tx_data[0] = 0x06;
     i2c.TransmitBlocking(RP2040_I2C_ADDRESS, tx_data, 1, 1000);
 
-    System::Delay(60);
+    System::Delay(16);
 
 #ifdef INCLUDE_SDCARD
     if (main_thread_do_save) {

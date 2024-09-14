@@ -297,11 +297,22 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
   }
 
   // de-interleave
+  // for (size_t i = 0; i < size; i += 2) {
+  //   inl[i / 2] = out[i];
+  //   inr[i / 2] = out[i + 1];
+  //   outl[i / 2] = out[i];
+  //   outr[i / 2] = out[i + 1];
+  // }
+  float* inl_ptr = inl;
+  float* inr_ptr = inr;
+  float* outl_ptr = outl;
+  float* outr_ptr = outr;
+  float* out_ptr = out;
   for (size_t i = 0; i < size; i += 2) {
-    inl[i / 2] = out[i];
-    inr[i / 2] = out[i + 1];
-    outl[i / 2] = out[i];
-    outr[i / 2] = out[i + 1];
+    *inl_ptr++ = out_ptr[i];
+    *inr_ptr++ = out_ptr[i + 1];
+    *outl_ptr++ = out_ptr[i];
+    *outr_ptr++ = out_ptr[i + 1];
   }
 
 #ifdef INCLUDE_REVERB

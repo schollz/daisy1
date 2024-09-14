@@ -1,7 +1,7 @@
 // definitions
 #define INCLUDE_REVERB_VEC
-// #define INCLUDE_COMPRESSOR
-#define INCLUDE_SEQUENCER
+#define INCLUDE_COMPRESSOR
+// #define INCLUDE_SEQUENCER
 #define INCLUDE_SDCARD
 // #define INCLUDE_TAPE_LPF
 // old
@@ -541,6 +541,11 @@ int main(void) {
       reverb_wet_dry = (float)knob_values[2] / 4096.0f;
       daisy_midi.sysex_printf_buffer("reverb: %2.3f\n", reverb_wet_dry);
       // daisy_midi.sysex_printf_buffer("knob3: %d\n", knob_values[2]);
+    } else if (knob_changed[1]) {
+      // set compressor
+      float val = (float)knob_values[1] / 4096.0f;
+      daisy_midi.sysex_printf_buffer("compressor: %2.3f\n", val);
+      compressor.Set(val);
     }
     daisy_midi.sysex_send_buffer();
 

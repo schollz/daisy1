@@ -1,7 +1,7 @@
 // definitions
 #define INCLUDE_REVERB_VEC
 // #define INCLUDE_COMPRESSOR
-#define INCLUDE_SEQUENCER
+// #define INCLUDE_SEQUENCER
 #define INCLUDE_SDCARD
 // #define INCLUDE_TAPE_LPF
 // old
@@ -254,7 +254,8 @@ void sdcard_write_or_read(bool do_write) {
 #endif
 
 size_t audiocallback_sample_num = 0;
-uint32_t audiocallback_time_needed = 0;
+uint32_t audiocallback_time_needed[255];
+uint8_t audiocallback_time_needed_index = 0;
 float audiocallback_bufin[AUDIO_BLOCK_SIZE * 2];
 float audiocallback_bufout[AUDIO_BLOCK_SIZE * 2];
 static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
@@ -330,7 +331,7 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
   }
 
 #ifdef INCLUDE_AUDIO_PROFILING
-  audiocallback_time_needed = DWT->CYCCNT;
+  audiocallback_time_needed[audiocallback_time_needed_index++] = DWT->CYCCNT;
 #endif
 }
 
@@ -446,7 +447,23 @@ int main(void) {
   // start callback
   hw.StartAudio(AudioCallback);
 
+  bool startup_process = true;
+
   while (1) {
+    if (startup_process) {
+      startup_process = false;
+      daisy_midi.sysex_printf_buffer("startup\n");
+      daisy_midi.sysex_send_buffer();
+      for (size_t i = 0; i < 6; i++) {
+        tape[i].RecordingToggle();
+      }
+      System::Delay(3000);
+      for (size_t i = 0; i < 6; i++) {
+        tape[i].RecordingToggle();
+      }
+    }
+    System::Delay(1);
+    continue;
     I2CHandle::Result res;
     // ask for the button values by sending 0x03
     tx_data[0] = 0x03;
@@ -618,9 +635,15 @@ void Controls(float audio_level) {
 #endif
   }
   if (print_timer.Process()) {
+    // average all the audiocallback_time_needed
+    float avg_audiocallback_time_needed = 0.0f;
+    for (size_t i = 0; i < 255; i++) {
+      avg_audiocallback_time_needed += audiocallback_time_needed[i];
+    }
+    avg_audiocallback_time_needed /= 255.0f;
     daisy_midi.sysex_printf_buffer(
         "[Controls] usage=%2.1f%%\n",
-        (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f,
+        (float)avg_audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f,
         audiocallback_sample_num);
     // daisy_midi.sysex_printf_buffer(
     //     "(%d,%d,%d,%d) ", tape[loop_index].IsStopping(),

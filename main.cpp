@@ -1,9 +1,10 @@
 // definitions
-#define INCLUDE_REVERB_VEC
-#define INCLUDE_COMPRESSOR
-#define INCLUDE_SEQUENCER
-#define INCLUDE_SDCARD
+// #define INCLUDE_REVERB_VEC
+// #define INCLUDE_COMPRESSOR
+// #define INCLUDE_SEQUENCER
+// #define INCLUDE_SDCARD
 // #define INCLUDE_TAPE_LPF
+#define TEST_TAPE_CPU_USAGE
 // old
 // #define INCLUDE_REVERB
 //
@@ -455,20 +456,22 @@ int main(void) {
   bool startup_process = true;
 
   while (1) {
-    // if (startup_process) {
-    //   startup_process = false;
-    //   daisy_midi.sysex_printf_buffer("startup\n");
-    //   daisy_midi.sysex_send_buffer();
-    //   for (size_t i = 0; i < 6; i++) {
-    //     tape[i].RecordingToggle();
-    //   }
-    //   System::Delay(3000);
-    //   for (size_t i = 0; i < 6; i++) {
-    //     tape[i].RecordingToggle();
-    //   }
-    // }
-    // System::Delay(1);
-    // continue;
+#ifdef TEST_TAPE_CPU_USAGE
+    if (startup_process) {
+      startup_process = false;
+      daisy_midi.sysex_printf_buffer("startup\n");
+      daisy_midi.sysex_send_buffer();
+      for (size_t i = 0; i < 6; i++) {
+        tape[i].RecordingToggle();
+      }
+      System::Delay(1000);
+      for (size_t i = 0; i < 6; i++) {
+        tape[i].RecordingToggle();
+      }
+    }
+    System::Delay(1);
+    continue;
+#endif
 
     I2CHandle::Result res;
     // ask for the button values by sending 0x03
@@ -550,7 +553,9 @@ int main(void) {
       // set compressor
       float val = (float)knob_values[1] / 4096.0f;
       daisy_midi.sysex_printf_buffer("compressor: %2.3f\n", val);
+#ifdef INCLUDE_COMPRESSOR
       compressor.Set(val);
+#endif
     }
     daisy_midi.sysex_send_buffer();
 

@@ -258,6 +258,10 @@ float cpu_max_needed = 0.0f;
 uint32_t audiocallback_time_needed = 0;
 float audiocallback_bufin[AUDIO_BLOCK_SIZE * 2];
 float audiocallback_bufout[AUDIO_BLOCK_SIZE * 2];
+float inl[AUDIO_BLOCK_SIZE];
+float inr[AUDIO_BLOCK_SIZE];
+float outl[AUDIO_BLOCK_SIZE];
+float outr[AUDIO_BLOCK_SIZE];
 static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
                           AudioHandle::InterleavingOutputBuffer out,
                           size_t size) {
@@ -267,22 +271,16 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
   audiocallback_sample_num = size / 2;
 #endif
 
-  // find abs level from input
-  float abs_level = 0.0f;
-  for (size_t i = 0; i < size; i += 2) {
-    abs_level += fabsf(in[i]);
-    abs_level += fabsf(in[i + 1]);
-  }
-  Controls(abs_level);
+  Controls(0.0f);
 
-  // clear bufout
-  memset(audiocallback_bufout, 0, sizeof(audiocallback_bufout));
   // copy in left channel to bufin
   for (size_t i = 0; i < size; i += 2) {
     audiocallback_bufin[i] = in[i];
     audiocallback_bufin[i + 1] = in[i + 1];
     tape_circular_buffer.Write(in[i]);
     tape_circular_buffer.Write(in[i + 1]);
+    audiocallback_bufout[i] = 0;
+    audiocallback_bufout[i + 1] = 0;
   }
   uint32_t current_time = System::GetNow();
   for (size_t i = 0; i < NUM_LOOPS; i++) {
@@ -299,10 +297,6 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
   }
 
   // de-interleave
-  float inl[AUDIO_BLOCK_SIZE];
-  float inr[AUDIO_BLOCK_SIZE];
-  float outl[AUDIO_BLOCK_SIZE];
-  float outr[AUDIO_BLOCK_SIZE];
   for (size_t i = 0; i < size; i += 2) {
     inl[i / 2] = out[i];
     inr[i / 2] = out[i + 1];

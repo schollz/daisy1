@@ -387,9 +387,23 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
           if (head_play[head].state_time >= crossfade_limit) {
             head_play[head].SetState(TapeHead::STARTED);
           } else {
-            float fade_in = cosf((1.0f - ((float)head_play[head].state_time) /
-                                             ((float)crossfade_limit)) *
-                                 3.1415926535 / 2.0);
+            // // original
+            // float fade_in = cosf((1.0f - ((float)head_play[head].state_time)
+            // /
+            //                                  ((float)crossfade_limit)) *
+            //                      3.1415926535 / 2.0);
+
+            // approximation
+            // 4/pi^2 * x^2 + 4/pi * x
+            float ratio = static_cast<float>(head_play[head].state_time) /
+                          static_cast<float>(crossfade_limit);
+            float fade_in =
+                -0.40528473456 * ratio * ratio + 1.27323954474 * ratio;
+
+            // // linear crossfade
+            // float fade_in =
+            //     ((float)head_play[head].state_time) /
+            //     ((float)crossfade_limit);
             outl1[i] += buf_tape[head_play[head].pos] * fade_in;
             if (is_stereo) {
               outr1[i] += buf_tape[head_play[head].pos + 1] * fade_in;
@@ -444,9 +458,20 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
             // break out of sample loop;
             break;
           } else {
-            float fade_out = cosf((((float)head_play[head].state_time) /
-                                   ((float)crossfade_limit)) *
-                                  3.141592535f / 2.0f);
+            // // original
+            // float fade_out = cosf((((float)head_play[head].state_time) /
+            //                        ((float)crossfade_limit)) *
+            //                       3.141592535f / 2.0f);
+
+            // fade out approximation
+            // -4/pi^2*x^2+1
+            float ratio = static_cast<float>(head_play[head].state_time) /
+                          static_cast<float>(crossfade_limit);
+            float fade_out = -0.40528473456 * ratio * ratio + 1.0f;
+
+            // // linear cross-fade
+            // float fade_out = 1.0f - ((float)head_play[head].state_time) /
+            //                             ((float)crossfade_limit);
             outl1[i] += buf_tape[head_play[head].pos] * fade_out;
             if (is_stereo) {
               outr1[i] += buf_tape[head_play[head].pos + 1] * fade_out;

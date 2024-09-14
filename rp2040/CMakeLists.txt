@@ -23,7 +23,6 @@ pico_sdk_init()
 add_executable(${PROJECT_NAME} 
     main.c
     ${CMAKE_CURRENT_LIST_DIR}/lib/i2c_slave.c
-    ${CMAKE_CURRENT_LIST_DIR}/lib/adenv.c
     ${CMAKE_CURRENT_LIST_DIR}/lib/usb_descriptors.c
 )
 
@@ -41,8 +40,8 @@ target_link_libraries(${PROJECT_NAME}
     hardware_pio
     hardware_uart
     hardware_adc
-    tinyusb_device
-    tinyusb_board
+    # tinyusb_device
+    # tinyusb_board
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
@@ -54,25 +53,26 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     PIN_I2C1_SDA=2
     PIN_I2C1_SCL=3
     RP2040_I2C_ADDRESS=0x28
-    INCLUDE_MIDI=1
+    # INCLUDE_MIDI=1
 )
 
 add_compile_definitions(USE_PRINTF)
 
 set_property(TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS "-Wl,--print-memory-usage")
 
-target_link_libraries(${PROJECT_NAME} 
-    tinyusb_device
-    tinyusb_board
-)
-pico_enable_stdio_usb(${PROJECT_NAME} 0)
-pico_enable_stdio_uart(${PROJECT_NAME} 1)
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_LIST_DIR})
-
-
-# # uncomment these lines to have normal USB
-# pico_enable_stdio_usb(${PROJECT_NAME} 1)
+# # uncomment these lines to have USB MIDI
+# target_link_libraries(${PROJECT_NAME} 
+#     tinyusb_device
+#     tinyusb_board
+# )
+# pico_enable_stdio_usb(${PROJECT_NAME} 0)
 # pico_enable_stdio_uart(${PROJECT_NAME} 1)
+# target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+
+
+# uncomment these lines to have normal USB
+pico_enable_stdio_usb(${PROJECT_NAME} 1)
+pico_enable_stdio_uart(${PROJECT_NAME} 1)
 
 
 pico_add_extra_outputs(${PROJECT_NAME})

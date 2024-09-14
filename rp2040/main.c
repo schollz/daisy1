@@ -65,7 +65,6 @@ static const int LOOP_SLEEP_US = 1000000 / LOOP_SAMPLERATE;
 // global information
 uint8_t loop_index = 0;
 
-AdEnv *envelope;
 Tape tape[6];
 const uint encoder_pins[7] = {10, 12, 14, 16, 18, 20, 28};
 const uint encoder_sm[7] = {1, 2, 3, 0, 1, 2, 3};
@@ -155,13 +154,14 @@ static void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
         tape[i].is_stereo = context.mem[7] & 16;
         tape[i].has_recorded = context.mem[7] & 32;
         tape[i].is_playing = context.mem[7] & 64;
-        if (i == 0 && tape[i].is_playing_or_fading) {
-          printf("tape: %f %f %f %f %f %d %d %d %d %d %d %d\n", tape[i].phase,
-                 tape[i].phase_last, tape[i].pan, tape[i].amp, tape[i].fade,
-                 tape[i].is_recording, tape[i].is_playing_or_fading,
-                 tape[i].is_stopping, tape[i].is_recorded, tape[i].is_stereo,
-                 tape[i].has_recorded, tape[i].is_playing);
-        }
+        // if (i == 0) {
+        //   printf("tape: %f %f %f %f %f %d %d %d %d %d %d %d\n",
+        //   tape[i].phase,
+        //          tape[i].phase_last, tape[i].pan, tape[i].amp, tape[i].fade,
+        //          tape[i].is_recording, tape[i].is_playing_or_fading,
+        //          tape[i].is_stopping, tape[i].is_recorded, tape[i].is_stereo,
+        //          tape[i].has_recorded, tape[i].is_playing);
+        // }
       } else if (context.mem[0] == 0x05) {
         // global information
         loop_index = context.mem[1];
@@ -172,7 +172,6 @@ static void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
         uint8_t note = context.mem[1];
         next_note_play = true;
         next_note_value = (int)note;
-        AdEnv_Trigger(envelope);
       }
       context.mem_address_written = false;
       break;
@@ -260,7 +259,11 @@ int main() {
   DAC_update(dac);
 
   // setup envelope
-  AdEnv_Init(envelope, LOOP_SAMPLERATE);
+  AdEnv *envelope = malloc(sizeof(AdEnv));
+  AdEnv_Init(envelope, 100.0f);
+  AdEnv_SetCurve(envelope, -2.0f, -2.0f);
+  AdEnv_SetTime(envelope, ADENV_SEG_ATTACK, 0.1f);
+  AdEnv_SetTime(envelope, ADENV_SEG_DECAY, 2.0f);
 
   uint8_t ws2812_show_counter = 0;
   uint32_t ws2812_last_update_time = to_ms_since_boot(get_absolute_time());
@@ -425,6 +428,8 @@ int main() {
 
     // update the envelope
     if (next_note_play) {
+      next_note_play = false;
+      printf("note: %d\n", next_note_value);
       AdEnv_Trigger(envelope);
       float voltage = ((float)next_note_value - 48.0f) / 12.0f;
       if (voltage >= 0 && voltage <= 4.0f) {

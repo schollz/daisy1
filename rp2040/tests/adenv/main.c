@@ -41,11 +41,15 @@ int main() {
   float sample_rate = 500.0f;
   AdEnv *env;
   AdEnv_Init(env, sample_rate);
-  AdEnv_Trigger(env);
   AdEnv_SetCurve(env, -3.0f, -6.0f);
   AdEnv_SetTime(env, ADENV_SEG_ATTACK, 1.0f);
   AdEnv_SetTime(env, ADENV_SEG_DECAY, 2.0f);
-  for (float i = 0; i < sample_rate * 3; i++) {
+  AdEnv_Trigger(env);
+  for (float i = 0; i < sample_rate * 1.3; i++) {
     printf("%f,%f\n", i / sample_rate, AdEnv_Process(env));
+  }
+  AdEnv_Trigger(env);
+  for (float i = 0; i < sample_rate * 2.5; i++) {
+    printf("%f,%f\n", 1.3f + i / sample_rate, AdEnv_Process(env));
   }
 }

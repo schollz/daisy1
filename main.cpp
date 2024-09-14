@@ -1,6 +1,6 @@
 // definitions
 #define INCLUDE_REVERB_VEC
-#define INCLUDE_COMPRESSOR
+// #define INCLUDE_COMPRESSOR
 #define INCLUDE_SEQUENCER
 #define INCLUDE_SDCARD
 // #define INCLUDE_TAPE_LPF
@@ -457,7 +457,7 @@ int main(void) {
         button_values[i] = rx_data[i];
         // daisy_midi.sysex_printf_buffer("%d", rx_data[i]);
       }
-      // daisy_midi.sysex_printf_buffer(" ");
+      // daisy_midi.sysex_printf_buffer("\n");
     } else {
       // reinitialize i2c
       System::Delay(1000);
@@ -494,7 +494,7 @@ int main(void) {
         int changed = (byte1 >> 7) & 0x01;
         int value = ((byte1 & 0x7F) << 8) | byte2;
         knob_values[i / 2] = value;
-        knob_changed[i / 2] = changed;
+        knob_changed[i / 2] = changed > 0;
         // daisy_midi.sysex_printf_buffer("%d(%d) ", value, changed);
       }
     }
@@ -513,6 +513,16 @@ int main(void) {
     if (button_values[BTN_SHIFT] == 0 && button_pressed[BTN_PLAY]) {
       daisy_midi.sysex_printf_buffer("play");
       tape[loop_index].PlayingToggle();
+    }
+    if (button_values[BTN_SHIFT] == 0 && button_pressed[BTN_RECORD]) {
+      daisy_midi.sysex_printf_buffer("record");
+      tape[loop_index].RecordingToggle();
+    }
+
+    if (knob_changed[2]) {
+      reverb_wet_dry = (float)knob_values[2] / 4096.0f;
+      daisy_midi.sysex_printf_buffer("reverb: %2.3f\n", reverb_wet_dry);
+      // daisy_midi.sysex_printf_buffer("knob3: %d\n", knob_values[2]);
     }
     daisy_midi.sysex_send_buffer();
 
@@ -544,7 +554,7 @@ int main(void) {
     tx_data[0] = 0x06;
     i2c.TransmitBlocking(RP2040_I2C_ADDRESS, tx_data, 1, 1000);
 
-    System::Delay(16);
+    System::Delay(64);
 
 #ifdef INCLUDE_SDCARD
     if (main_thread_do_save) {
@@ -584,43 +594,38 @@ void Controls(float audio_level) {
       //   }
       // }
 
-      // // TODO: option to increment the loop index
-      // if (tape[loop_index].IsRecording()) {
-      //   tape[loop_index].RecordingStop();
-      //   loop_index++;
-      //   loop_index = loop_index % NUM_LOOPS;
-      // }
+      // TODO: option to increment the loop index
+      if (tape[loop_index].IsRecording()) {
+        tape[loop_index].RecordingStop();
+      }
 
-      // // TODO: option to automate recording
-      // if (measure_beat_count / 4 < 12 && (measure_beat_count / 4) % 2 == 0) {
-      //   // prepare the next loop for recording
-      //   if (tape[(loop_index + 1) % NUM_LOOPS].IsPlayingOrFading()) {
-      //     tape[(loop_index + 1) % NUM_LOOPS].PlayingStop();
-      //   }
-      //   tape[loop_index].RecordingStart();
-      //   new_recording = true;
-      // }
+      // TODO: option to automate recording
+      if (measure_beat_count / 4 < 12 && (measure_beat_count / 4) % 2 == 0) {
+        tape[loop_index].RecordingStart();
+        new_recording = true;
+      }
     }
     int note_to_play = chords.note_sequence[measure_beat_count % 12] +
                        chords.note_octaves[(measure_beat_count / 4) % 3];
     next_note_value = note_to_play;
     next_note_play = true;
+    if (measure_beat_count / 4 >= 12) {
+      next_note_value += 12;
+    }
     daisy_midi.sysex_printf_buffer("[%d] measure %d beat: %d note: %d\n",
                                    new_recording, measure_beat_count / 4,
                                    measure_beat_count % 4, note_to_play);
 #endif
   }
   if (print_timer.Process()) {
-    // daisy_midi.sysex_printf_buffer(
-    //     "[Controls] usage=%2.1f%% ",
-    //     (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f,
-    //     audiocallback_sample_num);
+    daisy_midi.sysex_printf_buffer(
+        "[Controls] usage=%2.1f%%\n",
+        (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f,
+        audiocallback_sample_num);
     // daisy_midi.sysex_printf_buffer(
     //     "(%d,%d,%d,%d) ", tape[loop_index].IsStopping(),
     //     tape[loop_index].IsPlaying(), tape[loop_index].IsPlayingOrFading(),
     //     tape[loop_index].IsRecording());
-    // daisy_midi.sysex_printf_buffer("knob1=%2.3f ", knobs_current[0]);
-    // daisy_midi.sysex_printf_buffer("knob2=%2.3f\n", knobs_current[1]);
 
     // daisy_midi.sysex_printf_buffer(
     //     "%d, knob1=%2.3f knob2=%2.3f, enc=%d, usage=%2.1f%% per %d "

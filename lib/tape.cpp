@@ -467,7 +467,7 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
 
     // // apply amplitude modulation
     lfos[TAPE_LFO_AMP].Update(current_time);
-    float val = amp_set;  // amp_set * lfos[TAPE_LFO_AMP].Value();
+    float val = amp_set * lfos[TAPE_LFO_AMP].Value();
     for (size_t i = 0; i < input_size; i++) {
       outl1[i] = outl1[i] * val;
       if (is_stereo) {

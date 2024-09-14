@@ -35,7 +35,6 @@ void DAC_update(DAC *self) {
     }
   }
   if (mcp4728_changed) {
-    printf("DAC_update\n");
     MCP4728_update(self->mcp4728);
   }
   for (int i = 0; i < 4; i++) {

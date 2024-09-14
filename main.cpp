@@ -1,7 +1,7 @@
 // definitions
 #define INCLUDE_REVERB_VEC
 #define INCLUDE_COMPRESSOR
-// #define INCLUDE_SEQUENCER
+#define INCLUDE_SEQUENCER
 #define INCLUDE_SDCARD
 // #define INCLUDE_TAPE_LPF
 // old

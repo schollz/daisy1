@@ -333,23 +333,22 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
                        (static_cast<float>(size_deinterleaved)) * rate)) +
                    2;
     }
-
-    // buffers before resampling
-    float outl1[input_size];
-    float outr1[input_size];
-
-    // buffers after resampling, before interleaving
-    float outl2[size_deinterleaved];
-    float outr2[size_deinterleaved];
+    if (input_size > 514) {
+      input_size = 514;
+    }
 
     // peek tracking
     size_t head_play_last_pos_before_peek = 0;
     bool head_play_last_pos_is_set = false;
 
-    memset(outl1, 0, sizeof(outl1));
-    memset(outr1, 0, sizeof(outr1));
-    memset(outl2, 0, sizeof(outl2));
-    memset(outr2, 0, sizeof(outr2));
+    for (size_t i = 0; i < 514; i++) {
+      outl1[i] = 0;
+      outr1[i] = 0;
+      if (i < AUDIO_BLOCK_SIZE) {
+        outl2[i] = 0;
+        outr2[i] = 0;
+      }
+    }
 
     // for each play head, update the output buffer
     // some heads may be stopped and they will be skipped initially

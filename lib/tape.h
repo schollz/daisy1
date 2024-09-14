@@ -7,6 +7,7 @@
 
 #include "balance2.h"
 #include "circularbuffer.h"
+#include "constants.h"
 #include "lfo.h"
 // #include "lpf_diodeladder.h"
 // #include "lpf_korg.h"
@@ -90,6 +91,12 @@ class Tape {
   LPF lpf[2];
   bool is_stereo = false;
   float sample_rate;
+  // buffers before resampling, max size is (AUDIO_BLOCK_SIZE*4)+2
+  float outl1[(AUDIO_BLOCK_SIZE * 4) + 2];
+  float outr1[(AUDIO_BLOCK_SIZE * 4) + 2];
+  // buffers after resampling, before interleaving
+  float outl2[AUDIO_BLOCK_SIZE];
+  float outr2[AUDIO_BLOCK_SIZE];
 };
 
 #endif

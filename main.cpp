@@ -291,12 +291,11 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
   }
 
   // passthrough
+  const float factor = 0.15f;
   for (size_t i = 0; i < size; i += 2) {
-    // TODO make a parameter for input gain
-    out[i] = (0.15 * in[i]) + (0.15 * audiocallback_bufout[i]);
-    out[i + 1] = (0.15 * in[i + 1]) + (0.15 * audiocallback_bufout[i + 1]);
+    out[i] = factor * (in[i] + audiocallback_bufout[i]);
+    out[i + 1] = factor * (in[i + 1] + audiocallback_bufout[i + 1]);
   }
-
   // de-interleave
   // for (size_t i = 0; i < size; i += 2) {
   //   inl[i / 2] = out[i];
@@ -331,9 +330,11 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
 #endif
 
   // re-interleave
+  size_t j = 0;
   for (size_t i = 0; i < size; i += 2) {
-    out[i] = outl[i / 2];
-    out[i + 1] = outr[i / 2];
+    out[i] = outl[j];
+    out[i + 1] = outr[j];
+    ++j;
   }
 
 #ifdef INCLUDE_AUDIO_PROFILING

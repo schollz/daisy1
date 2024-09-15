@@ -350,6 +350,8 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
       }
     }
 
+    float crossfade_limit_f = static_cast<float>(crossfade_limit);
+
     // for each play head, update the output buffer
     // some heads may be stopped and they will be skipped initially
     // however the last three heads_to_play are placeholders
@@ -395,7 +397,7 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
             // approximation
             // 4/pi^2 * x^2 + 4/pi * x
             float ratio = static_cast<float>(head_play[head].state_time) /
-                          static_cast<float>(crossfade_limit);
+                          crossfade_limit_f;
             float fade_in =
                 -0.40528473456 * ratio * ratio + 1.27323954474 * ratio;
 
@@ -465,7 +467,7 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
             // fade out approximation
             // -4/pi^2*x^2+1
             float ratio = static_cast<float>(head_play[head].state_time) /
-                          static_cast<float>(crossfade_limit);
+                          crossfade_limit_f;
             float fade_out = -0.40528473456 * ratio * ratio + 1.0f;
 
             // // linear cross-fade

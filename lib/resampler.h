@@ -19,6 +19,13 @@ class SampleRateConverter {
 
   void Process(const float* input_buffer, size_t input_size,
                float* output_buffer, size_t output_size) {
+    if (input_size == output_size + 2) {
+      // no resampling nessecary
+      for (size_t i = 0; i < output_size; ++i) {
+        output_buffer[i] = input_buffer[i];
+      }
+      return;
+    }
 #ifdef INCLUDE_TAPE_LPF
     float new_cutoff_rate = static_cast<float>(input_size - 2) / output_size;
 

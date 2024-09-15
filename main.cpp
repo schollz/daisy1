@@ -1,10 +1,10 @@
 // definitions
 #define INCLUDE_REVERB_VEC
 #define INCLUDE_COMPRESSOR
-// #define INCLUDE_SEQUENCER
+#define INCLUDE_SEQUENCER
 // #define INCLUDE_SDCARD
 // #define INCLUDE_TAPE_LPF
-#define TEST_TAPE_CPU_USAGE
+// #define TEST_TAPE_CPU_USAGE
 // old
 // #define INCLUDE_REVERB
 //
@@ -664,7 +664,9 @@ void Controls(float audio_level) {
     float cpu_needed =
         (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f;
     cpu_usage_running[cpu_usage_index] = cpu_needed;
-    cpu_usage_index++;
+    if (cpu_needed > 10) {
+      cpu_usage_index++;
+    }
     if (cpu_usage_index >= 30) {
       cpu_usage_index = 0;
       cpu_max_needed = 0.0f;

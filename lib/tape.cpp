@@ -572,14 +572,14 @@ void Tape::SetPitch(int pitch) {
   if (pitch < 0 || pitch > 48) {
     return;
   }
-  this->rate_input_size = input_sizes[pitch];
+  this->rate_input_size = input_sizes[pitch] + 2;
   this->rate = 0;
 }
 
 float Tape::GetRate() {
   if (rate == 0) {
     // calculate rate from rate_input_size
-    return (float)rate_input_size / 128.0f;
+    return (float)(rate_input_size - 2) / 128.0f;
   } else {
     return rate;
   }

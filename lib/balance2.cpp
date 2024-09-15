@@ -1,11 +1,12 @@
 #include "balance2.h"
 
-float FastSqrt(float x) {
+inline float FastSqrt(float x) {
   int i = *(int *)&x;
   i = 0x1fbd1df5 + (i >> 1);
   x = *(float *)&i;
   return x;
 }
+
 void Balance2_Process(float *bufl, float *bufr, size_t size, float pan) {
   // Calculate the pan factors
   float leftPanFactor = FastSqrt((1.0f + pan) * 0.5);

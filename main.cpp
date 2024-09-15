@@ -1,10 +1,10 @@
 // definitions
-// #define INCLUDE_REVERB_VEC
+#define INCLUDE_REVERB_VEC
 // #define INCLUDE_COMPRESSOR
 // #define INCLUDE_SEQUENCER
 // #define INCLUDE_SDCARD
 // #define INCLUDE_TAPE_LPF
-#define TEST_TAPE_CPU_USAGE
+// #define TEST_TAPE_CPU_USAGE
 // old
 // #define INCLUDE_REVERB
 //

@@ -533,10 +533,11 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
         float_clamp(pan_set + lfos[TAPE_LFO_PAN].Value(), -1.0f, 1.0f));
 
     // re-interleave and add the output to the main
+    size_t j = 0;
     for (size_t i = 0; i < size_interleaved; i += 2) {
-      size_t j = i / 2;
       out_main[i] += outl2[j];
       out_main[i + 1] += outr2[j];
+      ++j;
     }
   }
 }

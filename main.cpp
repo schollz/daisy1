@@ -1,6 +1,6 @@
 // definitions
-// #define INCLUDE_REVERB_VEC
-// #define INCLUDE_COMPRESSOR
+#define INCLUDE_REVERB_VEC
+#define INCLUDE_COMPRESSOR
 // #define INCLUDE_SEQUENCER
 // #define INCLUDE_SDCARD
 // #define INCLUDE_TAPE_LPF
@@ -257,6 +257,8 @@ void sdcard_write_or_read(bool do_write) {
 size_t audiocallback_sample_num = 0;
 float cpu_max_needed = 0.0f;
 uint32_t audiocallback_time_needed = 0;
+float cpu_usage_running[30] = {0};
+size_t cpu_usage_index = 0;
 float audiocallback_bufin[AUDIO_BLOCK_SIZE * 2];
 float audiocallback_bufout[AUDIO_BLOCK_SIZE * 2];
 float inl[AUDIO_BLOCK_SIZE];
@@ -339,6 +341,11 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
 
 #ifdef INCLUDE_AUDIO_PROFILING
   audiocallback_time_needed = DWT->CYCCNT;
+  float cpu_needed =
+      (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f;
+  if (cpu_needed > cpu_max_needed) {
+    cpu_max_needed = cpu_needed;
+  }
 #endif
 }
 
@@ -358,7 +365,9 @@ void I2C_RxCallback(void* context, I2CHandle::Result result) {
 }
 
 int main(void) {
-  hw.Init();
+  // hw.Init(false): 74.7% avg, 90.3% max
+  // hw.Init(true): 79.9% avg, 96.6% max
+  hw.Init(false);
 
   // initialize midi
   daisy_midi.Init();
@@ -654,11 +663,24 @@ void Controls(float audio_level) {
   if (print_timer.Process()) {
     float cpu_needed =
         (float)audiocallback_time_needed / CYCLES_AVAILBLE * 100.0f;
-    if (cpu_needed > cpu_max_needed) {
-      cpu_max_needed = cpu_needed;
+    cpu_usage_running[cpu_usage_index] = cpu_needed;
+    cpu_usage_index++;
+    if (cpu_usage_index >= 30) {
+      cpu_usage_index = 0;
+      cpu_max_needed = 0.0f;
     }
-    daisy_midi.sysex_printf_buffer("[Controls] usage=%2.1f%% (%2.1f%%)\n",
-                                   cpu_needed, cpu_max_needed);
+    float cpu_avg = 0.0f;
+    float cpu_count = 0.0f;
+    for (size_t i = 0; i < 20; i++) {
+      cpu_avg += cpu_usage_running[i];
+      if (cpu_usage_running[i] > 0.0f) {
+        cpu_count += 1.0f;
+      }
+    }
+    cpu_avg /= cpu_count;
+    daisy_midi.sysex_printf_buffer(
+        "[Controls] usage=%2.1f%% %2.1f%% (%2.1f%%)\n", cpu_needed, cpu_avg,
+        cpu_max_needed);
     // daisy_midi.sysex_printf_buffer(
     //     "(%d,%d,%d,%d) ", tape[loop_index].IsStopping(),
     //     tape[loop_index].IsPlaying(), tape[loop_index].IsPlayingOrFading(),

@@ -341,13 +341,13 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
     size_t head_play_last_pos_before_peek = 0;
     bool head_play_last_pos_is_set = false;
 
-    for (size_t i = 0; i < 514; i++) {
+    for (size_t i = 0; i < AUDIO_BLOCK_SIZE; i++) {
+      outl2[i] = 0;
+      outr2[i] = 0;
+    }
+    for (size_t i = 0; i < input_size; i++) {
       outl1[i] = 0;
       outr1[i] = 0;
-      if (i < AUDIO_BLOCK_SIZE) {
-        outl2[i] = 0;
-        outr2[i] = 0;
-      }
     }
 
     float crossfade_limit_f = static_cast<float>(crossfade_limit);

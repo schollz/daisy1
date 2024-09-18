@@ -1,8 +1,8 @@
 // definitions
-#define INCLUDE_REVERB_VEC
-#define INCLUDE_COMPRESSOR
-#define INCLUDE_SEQUENCER
-// #define INCLUDE_SDCARD
+// #define INCLUDE_REVERB_VEC
+// #define INCLUDE_COMPRESSOR
+// #define INCLUDE_SEQUENCER
+#define INCLUDE_SDCARD
 // #define INCLUDE_TAPE_LPF
 // #define TEST_TAPE_CPU_USAGE
 // old
@@ -75,7 +75,7 @@ bool knob_changed[3] = {false, false, false};
 
 bool main_thread_do_save = false;
 bool main_thread_do_load = false;
-bool stereo_mode = true;
+bool stereo_mode = false;
 float reverb_wet_dry = 0;
 
 int measure_measure_count = -1;
@@ -145,9 +145,14 @@ void sdcard_write_or_read(bool do_write) {
       }
       f_write(&SDFile, dataArray, NUM_LOOPS * sizeof(Data), &byteswritten);
       total_bytes += byteswritten;
-      f_write(&SDFile, tape_linear_buffer, MAX_SIZE * 4, &byteswritten);
-      total_bytes += byteswritten;
+      // TODO: should we write the entire buffer??
+      // f_write(&SDFile, tape_linear_buffer, MAX_SIZE * 4, &byteswritten);
+      // total_bytes += byteswritten;
       f_close(&SDFile);
+      daisy_midi.sysex_printf_buffer("wrote %d bytes to %s in %d\n",
+                                     byteswritten, filename,
+                                     System::GetNow() - current_time);
+      daisy_midi.sysex_send_buffer();
     }
     // write all the recorded loops to wav files
     for (size_t i = 0; i < NUM_LOOPS; i++) {
@@ -174,6 +179,10 @@ void sdcard_write_or_read(bool do_write) {
 
           // Close the file
           f_close(&SDFile);
+          daisy_midi.sysex_printf_buffer("wrote %d bytes to %s in %d\n",
+                                         byteswritten, filePath,
+                                         System::GetNow() - current_time);
+          daisy_midi.sysex_send_buffer();
         }
       }
       {
@@ -195,14 +204,17 @@ void sdcard_write_or_read(bool do_write) {
 
           // Close the file
           f_close(&SDFile);
+          daisy_midi.sysex_printf_buffer("wrote %d bytes to %s in %d\n",
+                                         byteswritten, filePath,
+                                         System::GetNow() - current_time);
+          daisy_midi.sysex_send_buffer();
         }
       }
       {
         char filePath[20];
         sprintf(filePath, "loop%d_post.wav", i);
         WavHeader header;
-        uint32_t numSamples =
-            (tape[i].buffer_max - tape[i].buffer_end) / (stereo_mode ? 2 : 1);
+        uint32_t numSamples = tape[i].crossfade_limit;
         WavHeader_init(header, numSamples, AUDIO_SAMPLE_RATE, numChannels);
         // Open the file for writing
         if (f_open(&SDFile, filePath, FA_WRITE | FA_CREATE_ALWAYS) == FR_OK) {
@@ -211,11 +223,15 @@ void sdcard_write_or_read(bool do_write) {
 
           // Write the specified range of float data to the file
           f_write(&SDFile, tape_linear_buffer + tape[i].buffer_end,
-                  numSamples * numChannels * sizeof(float), &byteswritten);
+                  numSamples * sizeof(float), &byteswritten);
           total_bytes += byteswritten;
 
           // Close the file
           f_close(&SDFile);
+          daisy_midi.sysex_printf_buffer("wrote %d bytes to %s in %d\n",
+                                         byteswritten, filePath,
+                                         System::GetNow() - current_time);
+          daisy_midi.sysex_send_buffer();
         }
       }
     }
@@ -244,7 +260,7 @@ void sdcard_write_or_read(bool do_write) {
   uint32_t finish_time = System::GetNow() - current_time;
 
   if (do_write) {
-    daisy_midi.sysex_printf_buffer("wrote %d bytes in %d ms", total_bytes,
+    daisy_midi.sysex_printf_buffer("wrote %d bytes in %d ms\n", total_bytes,
                                    finish_time);
   } else {
     daisy_midi.sysex_printf_buffer("read %d bytes in %d ms", total_bytes,
@@ -554,6 +570,10 @@ int main(void) {
       daisy_midi.sysex_printf_buffer("record");
       tape[loop_index].RecordingToggle();
     }
+    if (button_values[BTN_SHIFT] == 1 && button_pressed[BTN_SAVE]) {
+      daisy_midi.sysex_printf_buffer("save\n");
+      main_thread_do_save = true;
+    }
 
     if (knob_changed[2]) {
       reverb_wet_dry = (float)knob_values[2] / 4096.0f;
@@ -601,13 +621,15 @@ int main(void) {
 
 #ifdef INCLUDE_SDCARD
     if (main_thread_do_save) {
-      System::Delay(1000);
+      hw.StopAudio();
       sdcard_write_or_read(true);
       main_thread_do_save = false;
+      hw.StartAudio(AudioCallback);
     } else if (main_thread_do_load) {
-      System::Delay(1000);
+      hw.StopAudio();
       sdcard_write_or_read(false);
       main_thread_do_load = false;
+      hw.StartAudio(AudioCallback);
     }
 #endif
   }

@@ -24,6 +24,7 @@ add_executable(${PROJECT_NAME}
     main.c
     ${CMAKE_CURRENT_LIST_DIR}/lib/i2c_slave.c
     ${CMAKE_CURRENT_LIST_DIR}/lib/usb_descriptors.c
+    ${CMAKE_CURRENT_LIST_DIR}/lib/encoder.c
 )
 
 pico_generate_pio_header(ouroboros ${CMAKE_CURRENT_LIST_DIR}/lib/WS2812.pio)

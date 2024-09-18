@@ -25,6 +25,7 @@
 #include "lib/WS2812.h"
 #include "lib/adenv.h"
 #include "lib/dac.h"
+#include "lib/encoder.h"
 #include "lib/filterexp.h"
 #include "lib/i2c_fifo.h"
 #include "lib/i2c_slave.h"
@@ -238,6 +239,10 @@ int main() {
       quadrature_encoder_program_init(pio1, encoder_sm[i], encoder_pins[i], 0);
     }
   }
+  Encoder encoder_sense[7];
+  for (uint8_t i = 0; i < 7; i++) {
+    Encoder_init(&encoder_sense[i], 10);
+  }
 
   // setup WS2812
   WS2812 *ws2812;
@@ -300,6 +305,10 @@ int main() {
       } else {
         encoder_values[i] =
             -1 * quadrature_encoder_get_count(pio1, encoder_sm[i]);
+      }
+      if (i == 0) {
+        printf("encoder0: %d\n",
+               Encoder_getAdjustedValue(&encoder_sense[i], encoder_values[i]));
       }
     }
     startup_first_run = false;

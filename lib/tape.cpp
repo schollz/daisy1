@@ -1,7 +1,7 @@
 
 #include "tape.h"
 
-#define MAX_CROSSFADE_LIMIT (48000 * 3)
+#define MAX_CROSSFADE_LIMIT (48000 * 2)
 inline float float_clamp(float x, float min, float max) {
   if (x < min) {
     return min;
@@ -95,8 +95,8 @@ void Tape::SetTapeEnd(size_t pos) {
   crossfade_limit = (buffer_end - buffer_start) * (1.0f - POST_ROLL_FRACTION);
   if (crossfade_limit < 256) {
     crossfade_limit = 256;
-  } else if (crossfade_limit > 48000 * 3) {
-    crossfade_limit = 48000 * 3;
+  } else if (crossfade_limit > MAX_CROSSFADE_LIMIT) {
+    crossfade_limit = MAX_CROSSFADE_LIMIT;
   }
   if (is_stereo) {
     crossfade_limit = (crossfade_limit / 2) * 2;

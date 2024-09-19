@@ -77,8 +77,6 @@ class Tape {
   void SetPitch(int pitch);
   void SetTapeStart(size_t pos);
   void SetTapeEnd(size_t pos);
-  void SetPhaseStart(float phase);  // phase is 0-1
-  void SetPhaseEnd(float phase);
   void SetPhase(size_t phase);
   float GetPhase();
   float GetRate();

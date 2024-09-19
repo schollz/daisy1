@@ -1,6 +1,7 @@
 
 #include "tape.h"
 
+#define MAX_CROSSFADE_LIMIT (48000 * 3)
 inline float float_clamp(float x, float min, float max) {
   if (x < min) {
     return min;
@@ -26,8 +27,8 @@ void Tape::Init(size_t endpoints[2], CircularBuffer &buf_circular,
     this->endpoints[i] = (endpoints[i] / 2) * 2;
   }
   buffer_min = this->endpoints[0] + buf_circular.GetSize();
-  buffer_max =
-      buffer_min + ((this->endpoints[1] - buffer_min) * POST_ROLL_FRACTION);
+  buffer_max = this->endpoints[1] - (MAX_CROSSFADE_LIMIT * (is_stereo));
+
   if (is_stereo) {
     // make sure it is a power of two
     buffer_max = (buffer_max / 2) * 2;
@@ -68,20 +69,6 @@ void Tape::Init(size_t endpoints[2], CircularBuffer &buf_circular,
 }
 
 void Tape::RecordingStart() { head_rec.SetState(TapeHead::STARTING); }
-
-void Tape::SetPhaseStart(float phase) {
-  size_t buffer_start_new = roundf(phase * ((float)(buffer_max - buffer_min)));
-  if (buffer_start_new < buffer_end) {
-    SetTapeStart(buffer_start_new);
-  }
-}
-
-void Tape::SetPhaseEnd(float phase) {
-  size_t buffer_end_new = roundf(phase * ((float)(buffer_max - buffer_min)));
-  if (buffer_end_new > buffer_start) {
-    SetTapeEnd(buffer_end_new);
-  }
-}
 
 void Tape::SetPhase(size_t phase) { head_phase.store(phase); }
 
@@ -303,7 +290,7 @@ void Tape::Process(float *buf_tape, CircularBuffer &buf_circular, float *in,
       head_rec.Move();
       if (head_rec.IsState(TapeHead::STARTED)) {
         // if the buffer is full, stop recording
-        if (head_rec.pos >= buffer_start + buffer_max) {
+        if (head_rec.pos >= buffer_max) {
           head_rec.SetState(TapeHead::STOPPING);
           SetTapeEnd(head_rec.pos);
         }
@@ -607,8 +594,8 @@ void Tape::Marshal(uint8_t *data) {
 
   // add the current position of the recording head
   float recording_head;
-  if (buffer_range>0) {
-    recording_head = (head_rec.pos - buffer_start) / buffer_range;
+  if (buffer_range > 0) {
+    recording_head = (head_rec.pos - buffer_min) / (buffer_max - buffer_min);
   } else {
     recording_head = 0;
   }

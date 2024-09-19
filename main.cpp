@@ -596,14 +596,16 @@ int main(void) {
 
     // send the tape information
     for (size_t i = 0; i < NUM_LOOPS; i++) {
-      uint8_t tape_marshal_bytes[6];
+#define TAPE_MARSHAL_SIZE 7
+      uint8_t tape_marshal_bytes[TAPE_MARSHAL_SIZE];
       tape[i].Marshal(tape_marshal_bytes);
       tx_data[0] = 0x04;
       tx_data[1] = i;
-      for (size_t j = 0; j < 6; j++) {
+      for (size_t j = 0; j < TAPE_MARSHAL_SIZE; j++) {
         tx_data[j + 2] = tape_marshal_bytes[j];
       }
-      i2c.TransmitBlocking(RP2040_I2C_ADDRESS, tx_data, 6 + 2, 1000);
+      i2c.TransmitBlocking(RP2040_I2C_ADDRESS, tx_data, TAPE_MARSHAL_SIZE + 2,
+                           1000);
     }
     // send the note information
     if (next_note_play) {

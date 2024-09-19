@@ -47,6 +47,7 @@ bool i2c_done_signal = false;
 typedef struct Tape {
   float phase;
   float phase_last;
+  float phase_rec;
   float pan;
   float amp;
   float fade;
@@ -145,16 +146,17 @@ static void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
         uint8_t i = context.mem[1];
         tape[i].phase = context.mem[2] / 255.0f;
         tape[i].phase_last = context.mem[3] / 255.0f;
-        tape[i].pan = linlin(context.mem[4], 0, 255, -1.0f, 1.0f);
-        tape[i].amp = linlin(context.mem[5], 0, 255, 0.0f, 1.0f);
-        tape[i].fade = linlin(context.mem[6], 0, 255, 0.0f, 1.0f);
-        tape[i].is_recording = context.mem[7] & 1;
-        tape[i].is_playing_or_fading = context.mem[7] & 2;
-        tape[i].is_stopping = context.mem[7] & 4;
-        tape[i].is_recorded = context.mem[7] & 8;
-        tape[i].is_stereo = context.mem[7] & 16;
-        tape[i].has_recorded = context.mem[7] & 32;
-        tape[i].is_playing = context.mem[7] & 64;
+        tape[i].phase_rec = context.mem[4] / 255.0f;
+        tape[i].pan = linlin(context.mem[5], 0, 255, -1.0f, 1.0f);
+        tape[i].amp = linlin(context.mem[6], 0, 255, 0.0f, 1.0f);
+        tape[i].fade = linlin(context.mem[7], 0, 255, 0.0f, 1.0f);
+        tape[i].is_recording = context.mem[8] & 1;
+        tape[i].is_playing_or_fading = context.mem[8] & 2;
+        tape[i].is_stopping = context.mem[8] & 4;
+        tape[i].is_recorded = context.mem[8] & 8;
+        tape[i].is_stereo = context.mem[8] & 16;
+        tape[i].has_recorded = context.mem[8] & 32;
+        tape[i].is_playing = context.mem[8] & 64;
         // if (i == 0) {
         //   printf("tape: %f %f %f %f %f %d %d %d %d %d %d %d\n",
         //   tape[i].phase,
@@ -418,6 +420,11 @@ int main() {
                     led1_intensity);
         WS2812_fill(ws2812, led2, led2_intensity, led2_intensity,
                     led2_intensity);
+      }
+      // show the recording phase if recording
+      if (tape[loop_index].is_recording) {
+        WS2812_fill(ws2812, 10.0f + roundf(29.0f * tape[loop_index].phase_rec),
+                    255, 0, 0);
       }
 
       if (tape[loop_index].is_playing_or_fading) {

@@ -588,14 +588,16 @@ void Tape::Marshal(uint8_t *data) {
   if (buffer_range == 0) {
     data[1] = (0);  // or some other default value
   } else {
-    data[1] =
-        (roundf(255.0f * (head_play_last_pos - buffer_start) / buffer_range));
+    data[1] = (roundf(255.0f *
+                      (static_cast<float>(head_play_last_pos - buffer_start)) /
+                      buffer_range));
   }
 
   // add the current position of the recording head
   float recording_head;
-  if (buffer_range > 0) {
-    recording_head = (head_rec.pos - buffer_min) / (buffer_max - buffer_min);
+  if (buffer_max > buffer_min) {
+    recording_head = ((static_cast<float>(head_rec.pos - buffer_min)) /
+                      (buffer_max - buffer_min));
   } else {
     recording_head = 0;
   }
@@ -604,8 +606,7 @@ void Tape::Marshal(uint8_t *data) {
   } else if (recording_head > 1.0f) {
     recording_head -= 1.0f;
   }
-  data[2] = (roundf(255.0 * recording_head));
-
+  data[2] = roundf(255.0 * recording_head);
   data[3] = (roundf(linlin(lfos[TAPE_LFO_PAN].Value(), -1.0f, 1.0f, 0, 255)));
 
   data[4] = (roundf(linlin(lfos[TAPE_LFO_AMP].Value(), 0.0f, 1.0f, 0, 255)));

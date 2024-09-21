@@ -308,10 +308,11 @@ int main() {
         encoder_values[i] =
             -1 * quadrature_encoder_get_count(pio1, encoder_sm[i]);
       }
-      if (i == 0) {
-        printf("encoder0: %d\n",
-               Encoder_getAdjustedValue(&encoder_sense[i], encoder_values[i]));
-      }
+      // if (i == 0) {
+      //   printf("encoder0: %d\n",
+      //          Encoder_getAdjustedValue(&encoder_sense[i],
+      //          encoder_values[i]));
+      // }
     }
     startup_first_run = false;
 

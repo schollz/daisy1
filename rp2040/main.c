@@ -249,7 +249,7 @@ int main() {
   // setup WS2812
   WS2812 *ws2812;
   ws2812 = WS2812_new(WS2812_PIN, pio0, WS2812_SM, WS2812_NUM_LEDS);
-  WS2812_set_brightness(ws2812, 60);
+  WS2812_set_brightness(ws2812, 50);
 
 // setup USB midi
 #ifdef INCLUDE_MIDI

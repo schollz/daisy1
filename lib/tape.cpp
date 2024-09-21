@@ -87,7 +87,23 @@ void Tape::SetTapeStart(size_t pos) {
   buffer_start = pos;
 }
 
+void Tape::SetTapeStartSeconds(float seconds) {
+  if (quantized) {
+    float note_eigth = 30.0f / bpm;
+    seconds = roundf(seconds / note_eigth) * note_eigth;
+  }
+  // get current tape length
+  size_t tape_length = buffer_end - buffer_start;
+  // update the start
+  SetTapeStart(buffer_min + roundf(seconds * 48000.0f * (is_stereo ? 2 : 1)));
+  // update to a new tape end
+  SetTapeEnd(buffer_start + tape_length);
+}
+
 void Tape::SetTapeEnd(size_t pos) {
+  if (pos > buffer_max) {
+    pos = buffer_max;
+  }
   if (is_stereo) {
     pos = (pos / 2) * 2;
   }
@@ -101,6 +117,14 @@ void Tape::SetTapeEnd(size_t pos) {
   if (is_stereo) {
     crossfade_limit = (crossfade_limit / 2) * 2;
   }
+}
+
+void Tape::SetTapeLengthSeconds(float seconds) {
+  if (quantized) {
+    float note_eigth = 30.0f / bpm;
+    seconds = roundf(seconds / note_eigth) * note_eigth;
+  }
+  SetTapeEnd(buffer_start + roundf(seconds * 48000.0f * (is_stereo ? 2 : 1)));
 }
 
 void Tape::RecordingStop() {

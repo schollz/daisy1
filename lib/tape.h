@@ -44,6 +44,8 @@ class Tape {
   float amp_set = 1.0f;
   float rate = 1.0f;
   size_t rate_input_size = 0;
+  float bpm = 120.0f;
+  bool quantized = false;
 
   std::bitset<TAPE_FLAG_COUNT> flags;
   LFO lfos[TAPE_LFO_COUNT];
@@ -76,6 +78,8 @@ class Tape {
   void SetRate(float rate);
   void SetPitch(int pitch);
   void SetTapeStart(size_t pos);
+  void SetTapeStartSeconds(float seconds);
+  void SetTapeLengthSeconds(float seconds);
   void SetTapeEnd(size_t pos);
   void SetPhase(size_t phase);
   float GetPhase();

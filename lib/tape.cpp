@@ -89,8 +89,8 @@ void Tape::SetTapeStart(size_t pos) {
 
 void Tape::SetTapeStartSeconds(float seconds) {
   if (quantized) {
-    float note_eigth = 30.0f / bpm;
-    seconds = roundf(seconds / note_eigth) * note_eigth;
+    float note_eighth = 30.0f / bpm;
+    seconds = roundf(seconds / note_eighth) * note_eighth;
   }
   // get current tape length
   size_t tape_length = buffer_end - buffer_start;
@@ -121,8 +121,11 @@ void Tape::SetTapeEnd(size_t pos) {
 
 void Tape::SetTapeLengthSeconds(float seconds) {
   if (quantized) {
-    float note_eigth = 30.0f / bpm;
-    seconds = roundf(seconds / note_eigth) * note_eigth;
+    float note_eighth = 30.0f / bpm;
+    seconds = roundf(seconds / note_eighth) * note_eighth;
+    if (seconds < note_eighth) {
+      seconds = note_eighth;
+    }
   }
   SetTapeEnd(buffer_start + roundf(seconds * 48000.0f * (is_stereo ? 2 : 1)));
 }

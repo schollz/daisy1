@@ -1,8 +1,9 @@
 // definitions
 // #define INCLUDE_REVERB_VEC
+// #define INCLUDE_FVERB3
 // #define INCLUDE_COMPRESSOR
 // #define INCLUDE_SEQUENCER
-#define INCLUDE_SDCARD
+// #define INCLUDE_SDCARD
 // #define INCLUDE_TAPE_LPF
 // #define TEST_TAPE_CPU_USAGE
 // old
@@ -29,6 +30,9 @@
 // vectorized reverb is 13% faster
 #include "lib/fverb2_vec.h"
 #endif
+#ifdef INCLUDE_FVERB3
+#include "lib/fverb3.h"
+#endif
 
 #ifdef INCLUDE_COMPRESSOR
 #include "lib/compressor.h"
@@ -41,7 +45,7 @@ uint8_t DMA_BUFFER_MEM_SECTION buffer_spi[4];
 #define AUDIO_BLOCK_SIZE 128
 #define AUDIO_SAMPLE_RATE 48000
 #define CROSSFADE_PREROLL 4800
-#define MAX_SIZE 15899648
+#define MAX_SIZE 15897648
 #define CYCLES_AVAILBLE \
   1066666  // (400000000 * AUDIO_BLOCK_SIZE / AUDIO_SAMPLE_RATE)
 using namespace daisy;
@@ -54,6 +58,9 @@ I2CHandle i2c;
 Chords chords;
 #ifdef INCLUDE_REVERB_VEC
 FVerb2 fverb2;
+#endif
+#ifdef INCLUDE_FVERB3
+FVerb3 fverb3;
 #endif
 SdmmcHandler sd;
 FatFSInterface fsi;
@@ -341,7 +348,9 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in,
   fverb2.Process(AUDIO_BLOCK_SIZE, inl, inr, outl, outr, reverb_wet_dry,
                  current_time);
 #endif
-
+#ifdef INCLUDE_FVERB3
+  fverb3.compute(AUDIO_BLOCK_SIZE, inl, inr, outl, outr);
+#endif
 #ifdef INCLUDE_COMPRESSOR
   compressor.Process(AUDIO_BLOCK_SIZE, outl, outr);
   // compressor.Process(AUDIO_BLOCK_SIZE, outl, outr, outl, outr);
@@ -427,6 +436,9 @@ int main(void) {
 
 #ifdef INCLUDE_REVERB_VEC
   fverb2.init(AUDIO_SAMPLE_RATE);
+#endif
+#ifdef INCLUDE_FVERB3
+  fverb3.init(AUDIO_SAMPLE_RATE);
 #endif
 
 #ifdef INCLUDE_AUDIO_PROFILING

@@ -41,3 +41,7 @@ include $(SYSTEM_FILES_DIR)/Makefile
 .venv:
 	uv venv 
 	uv pip install -r requirements.txt
+
+lib/fverb3.h:
+	python3 dev/faust/faust.py --vec --sram dev/faust/fverb2/fverb2.dsp fverb3.cpp FVerb3 
+	mv fverb3.cpp lib/fverb3.h

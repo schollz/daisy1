@@ -7,7 +7,9 @@ parser.add_argument("input_file", help="Path to the input FAUST file.")
 parser.add_argument("output_file", help="Path to the output file.")
 parser.add_argument("class_name", help="Name of the FAUST class to generate.")
 parser.add_argument("--sram", action="store_true", help="Boolean flag for SRAM usage.")
-
+parser.add_argument(
+    "--vec", action="store_true", help="Boolean flag for vectorization."
+)
 # Parse the arguments
 args = parser.parse_args()
 
@@ -17,8 +19,12 @@ if args.output_file.endswith(".c"):
     lang = "c"
 
 # Run the FAUST compiler
+do_vec = ""
+if args.vec:
+    do_vec = " -vec "
 os.system(
     """faust -i -scn "" -i """
+    + do_vec
     + args.input_file
     + """ -lang """
     + lang
@@ -70,9 +76,9 @@ for i, line in enumerate(lines):
             line = "// " + line
             # copy to global variables
             global_variables.append(fields[1])
-    if "FAUSTFLOAT *input" in line:
+    if "float *input" in line:
         continue
-    if "FAUSTFLOAT *output" in line:
+    if "float *output" in line:
         continue
     if "void buildUserInterface" in line:
         in_user_interface = True
@@ -105,13 +111,16 @@ if args.sram:
         new_faust_code = new_faust_code.replace(
             variable_name + "[", variable_new_name + "["
         )
+        new_faust_code = new_faust_code.replace(
+            variable_name + ")", variable_new_name + ")"
+        )
 
 # Perform global replacements
 new_faust_code = new_faust_code.replace(
-    "FAUSTFLOAT **RESTRICT inputs", "float *input0, float *input1"
+    "float **RESTRICT inputs", "float *input0, float *input1"
 )
 new_faust_code = new_faust_code.replace(
-    "FAUSTFLOAT **RESTRICT outputs", "float *output0, float *output1"
+    "float **RESTRICT outputs", "float *output0, float *output1"
 )
 
 # Write the modified FAUST code back to the output file

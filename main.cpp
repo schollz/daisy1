@@ -1,6 +1,6 @@
 // definitions
 // #define INCLUDE_REVERB_VEC
-// #define INCLUDE_FVERB3
+#define INCLUDE_FVERB3
 // #define INCLUDE_COMPRESSOR
 // #define INCLUDE_SEQUENCER
 // #define INCLUDE_SDCARD

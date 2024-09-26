@@ -51,6 +51,7 @@ in_metadata = False
 in_user_interface = False
 line_with_class = 0
 global_variables = []
+setters = {}
 for i, line in enumerate(lines):
     # check if variable
     if line.startswith("class " + args.class_name):
@@ -94,12 +95,34 @@ for i, line in enumerate(lines):
             in_metadata = False
         # add // to the beginning of the line
         line = "// " + line
+    if '"symbol"' in line and "&" in line and "," in line:
+        # collect the variable between & and ,
+        variable = line.split("&")[1].split(",")[0]
+        # collect the name
+        fields = line.split('"')
+        name = fields[len(fields) - 2]
+        print(variable, name)
+        setters[variable] = name
     new_lines.append(line)
 
 if args.sram:
     # add back the globals
     for variable in global_variables:
         new_lines.insert(line_with_class - 1, "   float DSY_SDRAM_BSS " + variable)
+
+
+# add in setters
+line_with_compute = 0
+for i, line in enumerate(new_lines):
+    if "void compute" in line:
+        line_with_compute = i
+        break
+for variable, name in setters.items():
+    new_lines.insert(
+        line_with_compute - 1,
+        "   void set_" + name + "(float value) { " + variable + " = value; }",
+    )
+
 
 new_faust_code = "\n".join(new_lines)
 

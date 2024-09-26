@@ -24,6 +24,7 @@ CPP_SOURCES = main.cpp \
 	lib/daisy_midi.cpp \
 	lib/wavheader.cpp \
 	lib/utils.cpp \
+	lib/noise.cpp \
 	lib/chords.cpp
 	
 # C_SOURCES = audio.c
